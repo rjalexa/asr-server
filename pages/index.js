@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 
 export default function Home() {
   const [isRecording, setIsRecording] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [status, setStatus] = useState('Ready to record')
   const [partialTranscript, setPartialTranscript] = useState('')
@@ -33,21 +34,40 @@ export default function Home() {
 
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data)
+        
+        if (data.error) {
+          setStatus('Error: ' + data.error)
+          return
+        }
+        
+        if (data.type === 'reset_complete') {
+          setTranscript('')
+          setPartialTranscript('')
+          setStatus('Reset complete - ready to record')
+          return
+        }
+        
         if (data.transcript) {
-          // For final transcriptions, append to main transcript
+          // Handle incremental transcription from the improved server
           if (data.is_final) {
+            // Final transcription - use the full transcript from server
+            setTranscript(data.full_transcript || data.transcript)
+            setPartialTranscript('')
+          } else {
+            // Incremental update - append new text
             setTranscript(prev => {
-              // Add proper spacing and punctuation
               const newText = data.transcript.trim()
-              if (prev && !prev.endsWith(' ')) {
+              if (!newText) return prev
+              
+              // Add proper spacing
+              if (prev && !prev.endsWith(' ') && !prev.endsWith('.') && !prev.endsWith('!') && !prev.endsWith('?')) {
                 return prev + ' ' + newText
               }
               return prev + newText
             })
-            setPartialTranscript('') // Clear partial
-          } else {
-            // For partial results (if using streaming)
-            setPartialTranscript(data.transcript)
+            
+            // Show processing status
+            setStatus(`Processing... (chunk ${data.chunk_number || 'N/A'})`)
           }
         }
         
@@ -88,8 +108,36 @@ export default function Home() {
     }
   }
 
+  const pauseRecording = () => {
+    setStatus('Pausing recording...')
+    
+    // Stop the MediaRecorder to stop sending new audio data
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
+    }
+
+    // Stop the microphone stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+    }
+
+    // Keep WebSocket open briefly to receive any final transcription results
+    // Then close it after a short delay
+    setTimeout(() => {
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.close()
+      }
+    }, 2000) // Wait 2 seconds for any final results
+
+    setIsRecording(false)
+    setIsPaused(true)
+    setStatus('Recording paused - text preserved')
+    // Don't clear partialTranscript here - let any final results come through
+  }
+
   const stopRecording = () => {
-    setStatus('Stopping...')
+    // This is called by error handlers and WebSocket close events
+    setStatus('Connection stopped')
     
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop()
@@ -104,13 +152,19 @@ export default function Home() {
     }
 
     setIsRecording(false)
-    setStatus('Recording stopped')
-    setPartialTranscript('')
+    setIsPaused(false)
+  }
+
+  const resumeRecording = () => {
+    setIsPaused(false)
+    startRecording()
   }
 
   const clearTranscript = () => {
     setTranscript('')
     setPartialTranscript('')
+    setIsPaused(false)
+    setStatus('Ready to record')
   }
 
   return (
@@ -119,11 +173,17 @@ export default function Home() {
       
       <div style={{ marginBottom: '2rem' }}>
         <button
-          onClick={isRecording ? stopRecording : startRecording}
+          onClick={
+            isRecording 
+              ? pauseRecording 
+              : isPaused 
+                ? resumeRecording 
+                : startRecording
+          }
           style={{
             padding: '1rem 2rem',
             fontSize: '1.2rem',
-            backgroundColor: isRecording ? '#ef4444' : '#3b82f6',
+            backgroundColor: isRecording ? '#f59e0b' : isPaused ? '#10b981' : '#3b82f6',
             color: 'white',
             border: 'none',
             borderRadius: '0.5rem',
@@ -132,7 +192,7 @@ export default function Home() {
             marginRight: '1rem'
           }}
         >
-          {isRecording ? '⏹ Stop Recording' : '🎤 Start Recording'}
+          {isRecording ? '⏸ Pause Recording' : isPaused ? '▶ Resume Recording' : '🎤 Start Recording'}
         </button>
         
         <button
@@ -157,7 +217,7 @@ export default function Home() {
       <div style={{ 
         marginBottom: '1rem',
         padding: '0.5rem 1rem',
-        backgroundColor: isRecording ? '#fef3c7' : '#e5e7eb',
+        backgroundColor: isRecording ? '#fef3c7' : isPaused ? '#d1fae5' : '#e5e7eb',
         borderRadius: '0.5rem',
         display: 'flex',
         alignItems: 'center',
@@ -167,7 +227,7 @@ export default function Home() {
           width: '8px',
           height: '8px',
           borderRadius: '50%',
-          backgroundColor: isRecording ? '#f59e0b' : '#6b7280',
+          backgroundColor: isRecording ? '#f59e0b' : isPaused ? '#10b981' : '#6b7280',
           animation: isRecording ? 'pulse 1.5s infinite' : 'none'
         }} />
         <strong>Status:</strong> {status}
@@ -182,7 +242,7 @@ export default function Home() {
         position: 'relative'
       }}>
         <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#374151' }}>
-          Transcript:
+          Transcript will appear under
         </h3>
         
         <div style={{ 
@@ -190,11 +250,7 @@ export default function Home() {
           lineHeight: '1.6',
           color: '#1f2937'
         }}>
-          {transcript || (
-            <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>
-              Transcribed text will appear here...
-            </span>
-          )}
+          {transcript}
           {partialTranscript && (
             <span style={{ color: '#6b7280', fontStyle: 'italic' }}>
               {' '}{partialTranscript}
