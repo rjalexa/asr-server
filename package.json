@@ -1,0 +1,23 @@
+{
+  "name": "whisper-streaming-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "server": "node server.mjs",
+    "server:mock": "node server-mock.mjs",
+    "server:whisper": "node server-whisper.mjs",
+    "server:cjs": "node server.cjs",
+    "server:whisper-fixed": "node server-whisper-fixed.mjs",
+    "server:whisper-webm": "node server-whisper-webm.mjs"
+  },
+  "dependencies": {
+    "next": "14.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "ws": "^8.14.2"
+  }
+}
