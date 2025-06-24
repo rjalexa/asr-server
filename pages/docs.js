@@ -8,6 +8,9 @@ const SwaggerUI = dynamic(() => import('swagger-ui-react'), {
   loading: () => <div style={{ padding: '20px', textAlign: 'center' }}>Loading Swagger UI...</div>
 })
 
+// Import Swagger UI CSS
+import 'swagger-ui-react/swagger-ui.css'
+
 export default function ApiDocs() {
   const [spec, setSpec] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -128,11 +131,26 @@ export default function ApiDocs() {
               All API endpoints require authentication. To test the endpoints below:
             </p>
             <ol style={{ margin: '10px 0 0 0', color: '#856404' }}>
-              <li>Get your API key from the <code>.secrets</code> file</li>
+              <li>Get your API key from the <code>.secrets</code> file (e.g., <code>asr_prod_abc123def456ghi789</code>)</li>
               <li>Click the &quot;Authorize&quot; button below</li>
-              <li>Enter your API key in the format: <code>asr_your_key_here</code></li>
+              <li>Enter the complete API key value exactly as it appears in the file</li>
               <li>Click &quot;Authorize&quot; to authenticate your requests</li>
             </ol>
+            <div style={{ 
+              backgroundColor: '#e3f2fd', 
+              border: '1px solid #2196f3', 
+              borderRadius: '4px', 
+              padding: '10px', 
+              marginTop: '10px' 
+            }}>
+              <strong style={{ color: '#1976d2' }}>Example:</strong>
+              <br />
+              <span style={{ color: '#1976d2' }}>
+                If your .secrets file contains: <code>ASR_API_KEY_1=asr_prod_abc123def456ghi789</code>
+                <br />
+                Enter in authorization: <code>asr_prod_abc123def456ghi789</code>
+              </span>
+            </div>
           </div>
         </div>
 
