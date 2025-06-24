@@ -129,9 +129,9 @@ export default function ApiDocs() {
             </p>
             <ol style={{ margin: '10px 0 0 0', color: '#856404' }}>
               <li>Get your API key from the <code>.secrets</code> file</li>
-              <li>Click the "Authorize" button below</li>
+              <li>Click the &quot;Authorize&quot; button below</li>
               <li>Enter your API key in the format: <code>asr_your_key_here</code></li>
-              <li>Click "Authorize" to authenticate your requests</li>
+              <li>Click &quot;Authorize&quot; to authenticate your requests</li>
             </ol>
           </div>
         </div>
