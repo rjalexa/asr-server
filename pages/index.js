@@ -159,7 +159,7 @@ export default function Home() {
 
   return (
     <div style={{ padding: '2rem', fontFamily: 'system-ui', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>MP3 Recording & Transcription Demo</h1>
+      <h1>ASR Server - Audio Transcription</h1>
       <Navigation />
       
       {/* Configuration Controls */}

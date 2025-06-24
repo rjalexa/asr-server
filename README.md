@@ -43,7 +43,7 @@ That's it! No Node.js, Python, or other dependencies needed on your host machine
 1. **Clone the repository:**
    ```bash
    git clone <your-repo-url>
-   cd whisper-streaming-demo
+   cd asr-server
    ```
 
 2. **Set up environment:**

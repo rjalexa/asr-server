@@ -14,7 +14,7 @@ export default function Navigation() {
         color: 'white',
         border: '1px solid #3b82f6'
       }}>
-        🎤 MP3 Recording & Transcription
+        🎤 ASR Server - Audio Transcription
       </div>
     </nav>
   )
