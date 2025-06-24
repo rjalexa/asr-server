@@ -1,478 +1,410 @@
-# MP3 Recording & Transcription Demo (Docker Edition)
+# ASR Server - Automatic Speech Recognition API
 
-A Next.js application for MP3 audio recording and transcription using Docker-based OpenAI Whisper ASR webservice.
+A production-ready ASR (Automatic Speech Recognition) server built with Next.js and OpenAI Whisper, featuring API key authentication, rate limiting, and comprehensive Swagger documentation.
 
-## Features
-
-- 🎤 High-quality MP3 audio recording from browser
-- 🤖 Automatic transcription with configurable Whisper models
-- 🌍 Multi-language support (English, Italian, French, Spanish, German)
-- 💾 Download audio files (MP3 format)
-- 📄 Download transcribed text as .txt files
-- 🎧 Audio preview with playback controls
-- 🐳 Fully containerized with Docker Compose
-- 🎯 Clean, modern UI with model and language selection
-- ⚡ No local dependencies required
-- 🔑 **NEW: Direct API access with API key protection**
-- 🚀 **NEW: Production-ready nginx configuration**
-- 📊 **NEW: Rate limiting and security features**
-
-## Architecture
+## 🏗️ Architecture
 
 ```
-┌─────────────────┐    HTTP     ┌──────────────────────┐    HTTP API    ┌─────────────────────────┐
-│     Browser     │ ──────────► │   Next.js Frontend   │ ─────────────► │  Whisper ASR Backend   │
-│                 │             │    (Port 3000)       │                │     (Port 9000)         │
-└─────────────────┘             └──────────────────────┘                └─────────────────────────┘
-                                          │                                          │
-                                          │                                          │
-                                    ┌──────────────┐                        ┌──────────────┐
-                                    │   Docker     │                        │   Docker     │
-                                    │  Container   │                        │  Container   │
-                                    └──────────────┘                        └──────────────┘
+External Request → Frontend Container → Whisper Backend (Internal Network)
+                      ↓
+                 API Key Auth & Rate Limiting
+                      ↓
+                 whisper-backend:9000
 ```
 
-## Prerequisites
+### Security Model
+- ✅ Whisper backend only accessible via internal Docker network
+- ✅ All external access through protected API endpoints
+- ✅ API key authentication and rate limiting
+- ✅ Request validation and comprehensive error handling
 
-- **Docker** (20.10+)
-- **Docker Compose** (2.0+)
+## 🚀 Quick Start
 
-That's it! No Node.js, Python, or other dependencies needed on your host machine.
+### Prerequisites
 
-## Quick Start
+#### macOS
+```bash
+# Install Docker Desktop
+brew install --cask docker
 
-### Development Environment
+# Install curl (usually pre-installed)
+brew install curl
+```
 
-1. **Clone the repository:**
+#### Ubuntu/Debian Linux
+```bash
+# Update package list
+sudo apt-get update
+
+# Install Docker and Docker Compose
+sudo apt-get install docker.io docker-compose-plugin curl
+
+# Add user to docker group (optional, to avoid sudo)
+sudo usermod -aG docker $USER
+# Log out and back in for group changes to take effect
+```
+
+#### System Requirements
+- **Disk Space**: At least 5GB (for Whisper models)
+- **Memory**: 4GB+ recommended for optimal performance
+- **CPU**: Multi-core recommended for faster transcription
+
+### Development Setup
+
+1. **Clone and setup**:
    ```bash
-   git clone <your-repo-url>
+   git clone <repository-url>
    cd asr-server
    ```
 
-2. **Set up environment:**
+2. **Run development environment**:
    ```bash
-   cp .env.example .env.development
-   # Edit .env.development if needed (defaults should work)
+   ./scripts/dev-setup.sh
    ```
 
-3. **Start development environment:**
+3. **Access the application**:
+   - Frontend: http://localhost:3001
+   - Swagger UI: http://localhost:3001/docs
+   - API Documentation: http://localhost:3001/api/docs
+
+### Production Deployment
+
+1. **Prepare production environment**:
    ```bash
-   docker compose -f docker.compose.yml -f docker.compose.dev.yml up
+   # Create production API keys in .secrets file
+   echo "ASR_API_KEY_1=your_production_key_here" > .secrets
    ```
 
-4. **Access the application:**
-   ```
-   http://localhost:3000
-   ```
-
-The development environment includes:
-- Hot reload for code changes
-- Volume mounting for instant updates
-- Debug logging
-- Direct port access
-
-### Production Environment
-
-1. **Set up production environment:**
+2. **Deploy to production**:
    ```bash
-   cp .env.example .env.production
-   # Edit .env.production with your settings
+   ./scripts/prod-deploy.sh
    ```
 
-2. **Build and start production:**
-   ```bash
-   docker compose -f docker.compose.yml -f docker.compose.prod.yml up -d
-   ```
+3. **Access production services**:
+   - Frontend: http://localhost:9001
+   - Swagger UI: http://localhost:9001/docs
 
-3. **Configure your existing nginx:**
-   Add this location block to your nginx configuration:
-   ```nginx
-   location /whisper-demo {
-       proxy_pass http://localhost:3000;
-       proxy_http_version 1.1;
-       proxy_set_header Upgrade $http_upgrade;
-       proxy_set_header Connection 'upgrade';
-       proxy_set_header Host $host;
-       proxy_set_header X-Real-IP $remote_addr;
-       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-       proxy_set_header X-Forwarded-Proto $scheme;
-       proxy_cache_bypass $http_upgrade;
-   }
-   ```
+## 📁 Project Structure
 
-4. **Reload nginx:**
-   ```bash
-   sudo nginx -t && sudo nginx -s reload
-   ```
+```
+asr-server/
+├── scripts/                    # Deployment scripts
+│   ├── dev-setup.sh           # Development environment setup
+│   └── prod-deploy.sh         # Production deployment
+├── pages/                     # Next.js pages and API routes
+│   ├── api/v1/               # Versioned API endpoints
+│   │   ├── asr.js            # Main ASR endpoint
+│   │   ├── detect-language.js # Language detection
+│   │   └── transcribe-direct.js # Enhanced transcription
+│   ├── docs.js               # Swagger UI page
+│   └── index.js              # Frontend homepage
+├── docker/                   # Docker configurations
+│   ├── development/          # Development Dockerfile
+│   └── production/           # Production Dockerfile
+├── docker.compose.yml        # Default Docker Compose
+├── docker.compose.dev.yml    # Development configuration
+├── docker.compose.prod.yml   # Production configuration
+├── .env.development          # Development environment variables
+├── .env.production           # Production environment variables
+├── .secrets                  # API keys (create this file)
+└── README.md                 # This file
+```
 
-## Configuration
+## 🔧 Configuration
 
-### Environment Variables
+### Environment Files
 
-| Variable | Description | Default | Options |
-|----------|-------------|---------|---------|
-| `WHISPER_API_URL` | Whisper service URL | `http://whisper-backend:9000` | Internal Docker URL |
-| `WHISPER_MODEL` | Default model size | `base` | `tiny`, `base`, `small`, `medium`, `large` |
-| `WHISPER_DEFAULT_LANGUAGE` | Default language | `en` | `en`, `it`, `fr`, `es`, `de` |
-| `SUPPORTED_LANGUAGES` | Supported languages | `en,it,fr,es,de` | Comma-separated list |
-| `NODE_ENV` | Environment | `development` | `development`, `production` |
+#### Development (.env.development)
+```bash
+WHISPER_API_URL=http://whisper-backend:9000
+WHISPER_MODEL=base
+WHISPER_DEFAULT_LANGUAGE=en
+SUPPORTED_LANGUAGES=en,it,fr,es,de
+```
 
-### Model Selection
+#### Production (.env.production)
+```bash
+WHISPER_API_URL=http://whisper-backend:9000
+WHISPER_MODEL=base
+WHISPER_DEFAULT_LANGUAGE=en
+SUPPORTED_LANGUAGES=en,it,fr,es,de
+ASR_RATE_LIMIT_PER_MINUTE=30
+ASR_SECRETS_FILE=.secrets
+NODE_ENV=production
+```
 
-| Model | Size | Speed | Accuracy | Use Case |
-|-------|------|-------|----------|----------|
-| `tiny` | ~39MB | Fastest | Basic | Quick testing, real-time |
-| `base` | ~74MB | Fast | Good | Balanced performance |
-| `small` | ~244MB | Medium | Better | Most applications |
-| `medium` | ~769MB | Slow | High | High accuracy needs |
-| `large` | ~1550MB | Slowest | Best | Maximum accuracy |
+### API Keys (.secrets)
+Create a `.secrets` file with your API keys:
+```bash
+ASR_API_KEY_1=asr_prod_your_secure_key_here
+ASR_API_KEY_2=asr_backup_another_key_here
+ASR_API_KEY_3=asr_dev_development_key_here
+```
 
-### Language Support
+### Port Configuration
 
-- **English** (`en`) - Default
-- **Italian** (`it`)
-- **French** (`fr`)
-- **Spanish** (`es`)
-- **German** (`de`)
+| Environment | Frontend Port | Backend Access | Use Case |
+|-------------|---------------|----------------|----------|
+| Development | 3001          | Internal only  | Local development |
+| Production  | 9001          | Internal only  | Production deployment |
+| Default     | 3000          | Internal only  | Testing/fallback |
 
-Additional languages can be added by modifying the `SUPPORTED_LANGUAGES` environment variable and updating the frontend options.
+## 📡 API Endpoints
 
-## Usage
+### v1 API (Recommended)
 
-1. **Select Configuration:**
-   - Choose model size (tiny to large)
-   - Select target language
+#### ASR - Automatic Speech Recognition
+```bash
+POST /api/v1/asr
+```
+- **Headers**: `X-API-Key: your_api_key`
+- **Body**: `multipart/form-data` with `audio_file`
+- **Query Parameters**:
+  - `language`: `en|it|fr|es|de` (default: `en`)
+  - `model`: `tiny|base|small|medium|large` (default: `base`)
+  - `task`: `transcribe|translate` (default: `transcribe`)
+  - `output`: `json|text` (default: `json`)
 
-2. **Record Audio:**
-   - Click "🎤 Start Recording"
-   - Allow microphone access
-   - Speak clearly
-   - Click "⏹ Stop Recording"
+#### Language Detection
+```bash
+POST /api/v1/detect-language
+```
+- **Headers**: `X-API-Key: your_api_key`
+- **Body**: `multipart/form-data` with `audio_file`
 
-3. **Get Results:**
-   - Transcription starts automatically
-   - View results in the transcript area
-   - Download audio (💾) or text (📄)
+#### Enhanced Transcription
+```bash
+POST /api/v1/transcribe-direct
+```
+- **Headers**: `X-API-Key: your_api_key`
+- **Body**: `multipart/form-data` with `audio` field
+- **Query Parameters**:
+  - `language`: `en|it|fr|es|de` (default: `en`)
+  - `model`: `tiny|base|small|medium|large` (default: `base`)
 
-## Docker Commands
+### Documentation Endpoints
+- `GET /docs` - Interactive Swagger UI
+- `GET /api/docs` - OpenAPI specification
+- `GET /api/health` - Health check
 
-### Development
+## 🧪 Testing
 
+### Using curl
+```bash
+# Get your API key
+API_KEY=$(grep "ASR_API_KEY_1" .secrets | cut -d'=' -f2)
+
+# Test ASR endpoint
+curl -X POST \
+  -H "X-API-Key: $API_KEY" \
+  -F "audio_file=@your-audio.mp3" \
+  "http://localhost:3001/api/v1/asr?language=en&output=json"
+
+# Test language detection
+curl -X POST \
+  -H "X-API-Key: $API_KEY" \
+  -F "audio_file=@your-audio.mp3" \
+  "http://localhost:3001/api/v1/detect-language"
+```
+
+### Using Swagger UI
+1. Open http://localhost:3001/docs (dev) or http://localhost:9001/docs (prod)
+2. Click "Authorize" and enter your API key
+3. Test endpoints with audio files directly in the browser
+
+## 🔒 Security Features
+
+### API Key Authentication
+- All endpoints require valid API key in `X-API-Key` header
+- Keys stored in gitignored `.secrets` file
+- Server-side validation for all requests
+
+### Rate Limiting
+- 30 requests per minute per API key
+- Burst protection (5 additional requests)
+- Rate limit headers in responses
+
+### Request Validation
+- File type validation (audio files only)
+- File size limits (50MB maximum)
+- Request method validation
+- Parameter validation
+
+### Network Security
+- Whisper backend isolated to internal Docker network
+- No direct host access to ASR service
+- All external access through protected frontend
+
+## 🛠️ Development
+
+### Local Development
 ```bash
 # Start development environment
-docker compose -f docker.compose.yml -f docker.compose.dev.yml up
-
-# Start in background
-docker compose -f docker.compose.yml -f docker.compose.dev.yml up -d
+./scripts/dev-setup.sh
 
 # View logs
-docker compose -f docker.compose.yml -f docker.compose.dev.yml logs -f
+docker compose -f docker.compose.dev.yml logs -f
 
 # Stop services
-docker compose -f docker.compose.yml -f docker.compose.dev.yml down
+docker compose -f docker.compose.dev.yml down
+
+# Clean restart
+./scripts/dev-setup.sh --clean
 ```
 
-### Production
-
+### Production Management
 ```bash
-# Start production environment
-docker compose -f docker.compose.yml -f docker.compose.prod.yml up -d
+# Deploy to production
+./scripts/prod-deploy.sh
+
+# Update deployment
+./scripts/prod-deploy.sh --update
 
 # View logs
-docker compose -f docker.compose.yml -f docker.compose.prod.yml logs -f
+docker compose -f docker.compose.prod.yml logs -f
 
-# Restart services
-docker compose -f docker.compose.yml -f docker.compose.prod.yml restart
+# Monitor resources
+docker stats
 
 # Stop services
-docker compose -f docker.compose.yml -f docker.compose.prod.yml down
+docker compose -f docker.compose.prod.yml down
 ```
 
-### Maintenance
-
-```bash
-# Update images
-docker compose pull
-
-# Rebuild frontend
-docker compose build frontend
-
-# Clean up
-docker compose down -v
-docker system prune -f
-
-# View service status
-docker compose ps
-```
-
-## API Access
-
-### 🔑 Direct API Access (NEW)
-
-The ASR server now supports direct API access with API key authentication and rate limiting. This allows external applications to use the transcription service programmatically.
-
-#### Quick Setup
-```bash
-# Run the automated setup script
-./setup-asr-api.sh
-
-# Or follow the manual setup in ASR_API_SETUP.md
-```
-
-#### API Endpoints
-
-**Direct ASR Service** (Port 9001):
-```bash
-curl -X POST \
-  -H "X-API-Key: your-api-key" \
-  -F "audio_file=@recording.mp3" \
-  "https://your-domain.com/asr/asr?language=en&output=json"
-```
-
-**Next.js API Endpoint**:
-```bash
-curl -X POST \
-  -H "X-API-Key: your-api-key" \
-  -F "audio=@recording.mp3" \
-  "https://your-domain.com/api/transcribe-direct?language=en&model=base"
-```
-
-#### Features
-- 🔐 API key authentication from `.secrets` file
-- 🚦 Rate limiting (30 requests/minute per key)
-- 🛡️ Security headers and CORS support
-- 📊 Rate limit headers in responses
-- 🔧 Configurable via environment variables
-
-#### Documentation
-- **Complete Setup Guide**: `ASR_API_SETUP.md`
-- **Nginx Configuration**: `nginx/asr-nginx.conf`
-- **Setup Script**: `./setup-asr-api.sh`
-
-### Web Interface API Endpoints
-
-### Health Check
-```
-GET /api/health
-```
-Returns service status and configuration.
-
-### Transcription (Web Interface)
-```
-POST /api/transcribe?model=base&language=en
-Content-Type: multipart/form-data
-Body: audio file
-```
-
-**Parameters:**
-- `model`: Whisper model size (`tiny`, `base`, `small`, `medium`, `large`)
-- `language`: Target language (`en`, `it`, `fr`, `es`, `de`)
-
-**Response:**
-```json
-{
-  "transcript": "Transcribed text",
-  "language": "en",
-  "model": "base",
-  "confidence": 0.95,
-  "size": 1024,
-  "filename": "recording.mp3"
-}
-```
-
-### Direct API Transcription (API Key Required)
-```
-POST /api/transcribe-direct?model=base&language=en
-X-API-Key: your-api-key
-Content-Type: multipart/form-data
-Body: audio file (field name: "audio")
-```
-
-**Enhanced Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "transcript": "Transcribed text",
-    "language": "en",
-    "model": "base",
-    "confidence": 0.95,
-    "metadata": {
-      "filename": "recording.mp3",
-      "size": 1048576,
-      "processedAt": "2025-01-24T14:30:00.000Z"
-    }
-  },
-  "rateLimit": {
-    "remaining": 29,
-    "resetTime": "2025-01-24T14:31:00.000Z"
-  }
-}
-```
-
-**Error Responses:**
-- `400`: Invalid model or unsupported language
-- `401`: Missing or invalid API key
-- `408`: Request timeout
-- `422`: Audio processing error
-- `429`: Rate limit exceeded
-- `500`: Internal server error
-
-## Troubleshooting
+## 🐛 Troubleshooting
 
 ### Common Issues
 
-#### Services won't start
+#### Services Not Starting
 ```bash
-# Check if ports are in use
-sudo lsof -i :3000
-sudo lsof -i :9000
-
 # Check Docker status
-docker --version
-docker compose version
+docker info
+
+# Check service logs
+docker compose -f docker.compose.dev.yml logs
+
+# Restart Docker (macOS/Windows)
+# Restart Docker Desktop application
+
+# Restart Docker (Linux)
+sudo systemctl restart docker
 ```
 
-#### Whisper backend fails to start
+#### Port Already in Use
 ```bash
-# Check logs
-docker compose logs whisper-backend
+# Check what's using the port
+sudo lsof -i :3001  # or :9001 for production
 
-# Common causes:
-# - Insufficient memory (needs ~2GB for larger models)
-# - Model download timeout
-# - Port conflicts
+# Kill process using port
+sudo kill -9 <PID>
+
+# Or use different configuration
+./scripts/dev-setup.sh  # Uses port 3001
 ```
 
-#### Frontend can't connect to backend
+#### API Key Issues
 ```bash
-# Check network connectivity
-docker compose exec frontend ping whisper-backend
+# Check .secrets file format
+cat .secrets
 
-# Verify environment variables
-docker compose exec frontend env | grep WHISPER
+# Ensure no extra spaces or characters
+# Format: ASR_API_KEY_1=your_key_here
+
+# Restart services after key changes
+docker compose -f docker.compose.dev.yml restart
 ```
 
-#### Audio recording not working
-- Check browser permissions for microphone
-- Use Chrome/Edge for best compatibility
-- Ensure HTTPS in production (required for microphone access)
+#### Whisper Backend Not Ready
+- Whisper backend can take 30-60 seconds to initialize
+- Check logs: `docker compose logs whisper-backend`
+- Ensure sufficient memory (4GB+ recommended)
 
-#### Transcription errors
+#### Permission Issues (Linux)
 ```bash
-# Check backend logs
-docker compose logs whisper-backend
+# Add user to docker group
+sudo usermod -aG docker $USER
 
-# Common issues:
-# - Unsupported audio format
-# - File too large (10MB limit)
-# - Language not supported
-# - Model not loaded
+# Log out and back in, then test
+docker run hello-world
 ```
 
-### Performance Tuning
+### Performance Optimization
 
-#### Memory Usage
-```yaml
-# In docker.compose.prod.yml
-deploy:
-  resources:
-    limits:
-      memory: 2G  # Adjust based on model size
-    reservations:
-      memory: 1G
-```
+#### For Better Performance
+- Use SSD storage for Docker volumes
+- Allocate more memory to Docker (8GB+ recommended)
+- Use faster Whisper models (`small`, `medium`, `large`)
+- Consider GPU acceleration for production workloads
 
-#### Model Loading
-- First transcription may be slow (model loading)
-- Subsequent requests are faster
-- Use persistent volumes to cache models
-
-#### Network Optimization
-```yaml
-# Add to docker.compose.yml
-networks:
-  whisper-network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
-```
-
-### Logs and Debugging
-
+#### Resource Monitoring
 ```bash
-# View all logs
-docker compose logs
+# Monitor container resources
+docker stats
 
-# Follow specific service
-docker compose logs -f frontend
-docker compose logs -f whisper-backend
+# Check disk usage
+docker system df
 
-# Debug container
-docker compose exec frontend sh
-docker compose exec whisper-backend sh
-
-# Check health status
-curl http://localhost:3000/api/health
+# Clean up unused resources
+docker system prune
 ```
 
-## Migration from Local Setup
+## 🔄 Updates and Maintenance
 
-If you're migrating from the local Whisper.cpp setup:
+### Updating the Application
+```bash
+# Pull latest changes
+git pull origin main
 
-1. **Backup your data** (if any)
-2. **Remove old dependencies:**
-   ```bash
-   rm -rf whisper.cpp/
-   rm whisper
-   rm -rf models/
-   rm setup-whisper.sh
-   ```
-3. **Follow the Docker setup** above
-4. **Update any custom configurations**
+# Update development environment
+./scripts/dev-setup.sh --clean
 
-## Security Considerations
+# Update production deployment
+./scripts/prod-deploy.sh --update
+```
 
-### Development
-- Services exposed on localhost only
-- Debug logging enabled
-- No authentication required
+### Backup and Recovery
+```bash
+# Backup API keys
+cp .secrets .secrets.backup
 
-### Production
-- Use HTTPS with your nginx proxy
-- Implement authentication if needed
-- Monitor resource usage
-- Regular security updates:
-  ```bash
-  docker compose pull
-  docker compose up -d
-  ```
+# Backup Docker volumes
+docker run --rm -v whisper-models:/data -v $(pwd):/backup alpine tar czf /backup/whisper-models.tar.gz -C /data .
 
-### Data Privacy
-- Audio files processed in memory only
-- No persistent storage of recordings
-- Temporary files cleaned automatically
-- All processing happens locally (no external APIs)
+# Restore Docker volumes
+docker run --rm -v whisper-models:/data -v $(pwd):/backup alpine tar xzf /backup/whisper-models.tar.gz -C /data
+```
 
-## Contributing
+## 📊 Monitoring and Logging
+
+### Log Management
+- Logs are automatically rotated in production
+- View real-time logs: `docker compose logs -f`
+- Log files location: `/var/lib/docker/containers/`
+
+### Health Monitoring
+- Health endpoint: `/api/health`
+- Service status: `docker compose ps`
+- Resource usage: `docker stats`
+
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make changes and test with Docker
-4. Submit a pull request
+3. Make your changes
+4. Test with both development and production scripts
+5. Submit a pull request
 
-## License
+## 📄 License
 
-MIT License - see LICENSE file for details.
+[Add your license information here]
 
-## Support
+## 🆘 Support
 
 For issues and questions:
-1. Check the troubleshooting section
-2. Review Docker logs
-3. Open an issue on GitHub
+1. Check the troubleshooting section above
+2. Review Docker and application logs
+3. Verify API key configuration
+4. Test with provided curl commands
 
 ---
 
-**Note:** This application processes audio entirely locally using Docker containers. No data is sent to external services, ensuring privacy and security.
+**Note**: This ASR server is designed for production use with proper security, monitoring, and deployment practices. The Whisper backend is securely isolated and only accessible through authenticated API endpoints.
