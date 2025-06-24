@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/development/Dockerfile.dev
+    container_name: whisper-frontend
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - WHISPER_API_URL=${WHISPER_API_URL}
+      - WHISPER_MODEL=${WHISPER_MODEL}
+      - WHISPER_DEFAULT_LANGUAGE=${WHISPER_DEFAULT_LANGUAGE}
+      - SUPPORTED_LANGUAGES=${SUPPORTED_LANGUAGES}
+    depends_on:
+      - whisper-backend
+    networks:
+      - whisper-network
+
+  whisper-backend:
+    image: onerahmet/openai-whisper-asr-webservice:latest
+    container_name: whisper-backend
+    environment:
+      - ASR_MODEL=${WHISPER_MODEL:-base}
+      - ASR_ENGINE=openai_whisper
+    volumes:
+      - whisper-models:/root/.cache/whisper
+    networks:
+      - whisper-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  whisper-models:
+
+networks:
+  whisper-network:
+    driver: bridge

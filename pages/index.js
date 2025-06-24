@@ -7,6 +7,8 @@ export default function Home() {
   const [transcript, setTranscript] = useState('')
   const [status, setStatus] = useState('Ready to record')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [selectedModel, setSelectedModel] = useState('base')
+  const [selectedLanguage, setSelectedLanguage] = useState('en')
   
   const mediaRecorderRef = useRef(null)
   const streamRef = useRef(null)
@@ -79,19 +81,29 @@ export default function Home() {
     if (!blob) return
 
     setIsProcessing(true)
-    setStatus('Uploading and processing audio...')
+    setStatus(`Processing with ${selectedModel} model (${selectedLanguage})...`)
 
     try {
       const formData = new FormData()
       formData.append('audio', blob, 'recording.mp3')
 
-      const response = await fetch('/api/transcribe-local', {
+      // Build URL with model and language parameters
+      const queryParams = new URLSearchParams({
+        model: selectedModel,
+        language: selectedLanguage
+      })
+
+      const response = await fetch(`/api/transcribe?${queryParams}`, {
         method: 'POST',
         body: formData,
       })
 
       if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`)
+        const errorData = await response.json().catch(() => ({}))
+        if (response.status === 400 && errorData.error === 'Language not supported') {
+          throw new Error(`Language '${selectedLanguage}' is not supported. Supported languages: ${errorData.supportedLanguages?.join(', ')}`)
+        }
+        throw new Error(errorData.error || `Server error: ${response.status}`)
       }
 
       const result = await response.json()
@@ -101,7 +113,7 @@ export default function Home() {
       }
 
       setTranscript(result.transcript)
-      setStatus('Transcription complete!')
+      setStatus(`Transcription complete! (Model: ${result.model}, Language: ${result.language})`)
 
     } catch (error) {
       setStatus('Error: ' + error.message)
@@ -149,6 +161,68 @@ export default function Home() {
     <div style={{ padding: '2rem', fontFamily: 'system-ui', maxWidth: '800px', margin: '0 auto' }}>
       <h1>MP3 Recording & Transcription Demo</h1>
       <Navigation />
+      
+      {/* Configuration Controls */}
+      <div style={{ 
+        marginBottom: '2rem', 
+        padding: '1rem', 
+        backgroundColor: '#f8fafc', 
+        borderRadius: '0.5rem',
+        border: '1px solid #e2e8f0'
+      }}>
+        <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>Configuration</h3>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#374151' }}>
+              Model Size:
+            </label>
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              disabled={isRecording || isProcessing}
+              style={{
+                padding: '0.5rem',
+                borderRadius: '0.25rem',
+                border: '1px solid #d1d5db',
+                backgroundColor: 'white',
+                cursor: (isRecording || isProcessing) ? 'not-allowed' : 'pointer',
+                opacity: (isRecording || isProcessing) ? 0.5 : 1
+              }}
+            >
+              <option value="tiny">Tiny (fastest, least accurate)</option>
+              <option value="base">Base (balanced)</option>
+              <option value="small">Small (good accuracy)</option>
+              <option value="medium">Medium (better accuracy)</option>
+              <option value="large">Large (best accuracy, slowest)</option>
+            </select>
+          </div>
+          
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#374151' }}>
+              Language:
+            </label>
+            <select
+              value={selectedLanguage}
+              onChange={(e) => setSelectedLanguage(e.target.value)}
+              disabled={isRecording || isProcessing}
+              style={{
+                padding: '0.5rem',
+                borderRadius: '0.25rem',
+                border: '1px solid #d1d5db',
+                backgroundColor: 'white',
+                cursor: (isRecording || isProcessing) ? 'not-allowed' : 'pointer',
+                opacity: (isRecording || isProcessing) ? 0.5 : 1
+              }}
+            >
+              <option value="en">English</option>
+              <option value="it">Italian</option>
+              <option value="fr">French</option>
+              <option value="es">Spanish</option>
+              <option value="de">German</option>
+            </select>
+          </div>
+        </div>
+      </div>
       
       <div style={{ marginBottom: '2rem' }}>
         <button
@@ -287,7 +361,7 @@ export default function Home() {
           color: '#1f2937',
           minHeight: '200px'
         }}>
-          {transcript || (isProcessing ? 'Processing with local Whisper model...' : 'Transcript will appear here after recording')}
+          {transcript || (isProcessing ? `Processing with Docker Whisper service (${selectedModel} model, ${selectedLanguage})...` : 'Transcript will appear here after recording')}
         </div>
         
         {transcript && (

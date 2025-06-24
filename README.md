@@ -1,330 +1,399 @@
-# MP3 Recording & Transcription Demo
+# MP3 Recording & Transcription Demo (Docker Edition)
 
-A Next.js application for MP3 audio recording and transcription using local Whisper.cpp processing.
+A Next.js application for MP3 audio recording and transcription using Docker-based OpenAI Whisper ASR webservice.
 
 ## Features
 
 - 🎤 High-quality MP3 audio recording from browser
-- 🤖 Automatic transcription when recording stops
+- 🤖 Automatic transcription with configurable Whisper models
+- 🌍 Multi-language support (English, Italian, French, Spanish, German)
 - 💾 Download audio files (MP3 format)
 - 📄 Download transcribed text as .txt files
 - 🎧 Audio preview with playback controls
-- 🏠 Local transcription using Whisper.cpp (no API keys needed)
-- 🎯 Clean, modern UI with status indicators
+- 🐳 Fully containerized with Docker Compose
+- 🎯 Clean, modern UI with model and language selection
+- ⚡ No local dependencies required
+
+## Architecture
+
+```
+┌─────────────────┐    HTTP     ┌──────────────────────┐    HTTP API    ┌─────────────────────────┐
+│     Browser     │ ──────────► │   Next.js Frontend   │ ─────────────► │  Whisper ASR Backend   │
+│                 │             │    (Port 3000)       │                │     (Port 9000)         │
+└─────────────────┘             └──────────────────────┘                └─────────────────────────┘
+                                          │                                          │
+                                          │                                          │
+                                    ┌──────────────┐                        ┌──────────────┐
+                                    │   Docker     │                        │   Docker     │
+                                    │  Container   │                        │  Container   │
+                                    └──────────────┘                        └──────────────┘
+```
 
 ## Prerequisites
 
-- Node.js 18+ installed
-- pnpm installed (`npm install -g pnpm`)
+- **Docker** (20.10+)
+- **Docker Compose** (2.0+)
+
+That's it! No Node.js, Python, or other dependencies needed on your host machine.
 
 ## Quick Start
 
-1. **Install dependencies:**
+### Development Environment
+
+1. **Clone the repository:**
    ```bash
-   pnpm install
+   git clone <your-repo-url>
+   cd whisper-streaming-demo
    ```
 
-2. **Install Whisper.cpp (choose your platform):**
-
-   #### Option A: Automated Setup (Recommended)
+2. **Set up environment:**
    ```bash
-   # Run the automated setup script (macOS/Linux)
-   pnpm run setup:whisper
+   cp .env.example .env.development
+   # Edit .env.development if needed (defaults should work)
    ```
 
-   #### Option B: Manual Installation
-
-   **macOS (using Homebrew):**
+3. **Start development environment:**
    ```bash
-   # Install whisper.cpp via Homebrew
-   brew install whisper-cpp
-   
-   # Create symlink to the demo (whisper.cpp installs as 'whisper')
-   ln -sf $(which whisper) ./whisper
-   
-   # Download the model
-   mkdir -p models
-   curl -L -o models/ggml-small.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin
+   docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
    ```
 
-   **macOS (building from source):**
-   ```bash
-   # Clone and build whisper.cpp
-   git clone https://github.com/ggerganov/whisper.cpp.git
-   cd whisper.cpp
-   make
-   
-   # Create symlink to the demo
-   ln -sf $(pwd)/main ../whisper
-   cd ..
-   
-   # Download the model
-   mkdir -p models
-   curl -L -o models/ggml-small.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin
-   ```
-
-   **Linux (Ubuntu/Debian):**
-   ```bash
-   # Install build dependencies
-   sudo apt update
-   sudo apt install build-essential git
-   
-   # Clone and build whisper.cpp
-   git clone https://github.com/ggerganov/whisper.cpp.git
-   cd whisper.cpp
-   make
-   
-   # Create symlink to the demo
-   ln -sf $(pwd)/main ../whisper
-   cd ..
-   
-   # Download the model
-   mkdir -p models
-   curl -L -o models/ggml-small.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin
-   ```
-
-   **Linux (Arch Linux):**
-   ```bash
-   # Install from AUR (if available)
-   yay -S whisper.cpp
-   
-   # Or build from source (same as Ubuntu instructions above)
-   # Then create symlink
-   ln -sf /usr/bin/whisper ./whisper
-   
-   # Download the model
-   mkdir -p models
-   curl -L -o models/ggml-small.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin
-   ```
-
-3. **Install FFmpeg (required for audio conversion):**
-   ```bash
-   # macOS
-   brew install ffmpeg
-   
-   # Ubuntu/Debian
-   sudo apt install ffmpeg
-   
-   # Arch Linux
-   sudo pacman -S ffmpeg
-   
-   # CentOS/RHEL/Fedora
-   sudo dnf install ffmpeg
-   ```
-
-4. **Verify your installation:**
-   ```bash
-   # Check if whisper executable is accessible
-   ./whisper --help
-   
-   # Check if model file exists
-   ls -la models/ggml-small.bin
-   
-   # Check FFmpeg
-   ffmpeg -version
-   ```
-
-5. **Run the Next.js dev server:**
-   ```bash
-   pnpm run dev
-   ```
-
-6. **Open your browser:**
+4. **Access the application:**
    ```
    http://localhost:3000
    ```
 
+The development environment includes:
+- Hot reload for code changes
+- Volume mounting for instant updates
+- Debug logging
+- Direct port access
+
+### Production Environment
+
+1. **Set up production environment:**
+   ```bash
+   cp .env.example .env.production
+   # Edit .env.production with your settings
+   ```
+
+2. **Build and start production:**
+   ```bash
+   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+   ```
+
+3. **Configure your existing nginx:**
+   Add this location block to your nginx configuration:
+   ```nginx
+   location /whisper-demo {
+       proxy_pass http://localhost:3000;
+       proxy_http_version 1.1;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection 'upgrade';
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
+       proxy_cache_bypass $http_upgrade;
+   }
+   ```
+
+4. **Reload nginx:**
+   ```bash
+   sudo nginx -t && sudo nginx -s reload
+   ```
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Description | Default | Options |
+|----------|-------------|---------|---------|
+| `WHISPER_API_URL` | Whisper service URL | `http://whisper-backend:9000` | Internal Docker URL |
+| `WHISPER_MODEL` | Default model size | `base` | `tiny`, `base`, `small`, `medium`, `large` |
+| `WHISPER_DEFAULT_LANGUAGE` | Default language | `en` | `en`, `it`, `fr`, `es`, `de` |
+| `SUPPORTED_LANGUAGES` | Supported languages | `en,it,fr,es,de` | Comma-separated list |
+| `NODE_ENV` | Environment | `development` | `development`, `production` |
+
+### Model Selection
+
+| Model | Size | Speed | Accuracy | Use Case |
+|-------|------|-------|----------|----------|
+| `tiny` | ~39MB | Fastest | Basic | Quick testing, real-time |
+| `base` | ~74MB | Fast | Good | Balanced performance |
+| `small` | ~244MB | Medium | Better | Most applications |
+| `medium` | ~769MB | Slow | High | High accuracy needs |
+| `large` | ~1550MB | Slowest | Best | Maximum accuracy |
+
+### Language Support
+
+- **English** (`en`) - Default
+- **Italian** (`it`)
+- **French** (`fr`)
+- **Spanish** (`es`)
+- **German** (`de`)
+
+Additional languages can be added by modifying the `SUPPORTED_LANGUAGES` environment variable and updating the frontend options.
+
 ## Usage
 
-1. Click the "🎤 Start Recording" button
-2. Allow microphone access when prompted
-3. Speak clearly into your microphone
-4. Click "⏹ Stop Recording" when finished
-5. Transcription will start automatically
-6. Use "💾 Download audio" to save the MP3 file
-7. Use "📄 Download text" to save the transcribed text as a .txt file
-8. Use "Clear" to reset everything and start over
+1. **Select Configuration:**
+   - Choose model size (tiny to large)
+   - Select target language
 
-## How It Works
+2. **Record Audio:**
+   - Click "🎤 Start Recording"
+   - Allow microphone access
+   - Speak clearly
+   - Click "⏹ Stop Recording"
 
-1. **Frontend** (Next.js/React):
-   - Records high-quality MP3 audio files using MediaRecorder API
-   - Automatically starts transcription when recording stops
-   - Provides audio preview with playback controls
-   - Offers download functionality for both audio and text
+3. **Get Results:**
+   - Transcription starts automatically
+   - View results in the transcript area
+   - Download audio (💾) or text (📄)
 
-2. **Backend** (Next.js API):
-   - Receives MP3 file uploads via multipart form data
-   - Converts audio to WAV format using FFmpeg
-   - Processes with local Whisper.cpp for transcription
-   - Returns transcription results as JSON
+## Docker Commands
 
-## Project Structure
-
-```
-whisper-recording-demo/
-├── components/
-│   └── Navigation.js    # Simple navigation component
-├── pages/
-│   ├── api/
-│   │   └── transcribe-local.js  # Local Whisper API endpoint
-│   ├── _app.js
-│   └── index.js         # Main MP3 recording & transcription UI
-├── models/              # Whisper model files
-│   └── ggml-small.bin   # Small model (~244MB)
-├── setup-whisper.sh     # Whisper.cpp setup script
-├── next.config.mjs
-├── package.json
-└── README.md
-```
-
-## Available Scripts
-
-- `pnpm run dev` - Start Next.js development server
-- `pnpm run setup:whisper` - Set up Whisper.cpp and download model
-- `pnpm run build` - Build the Next.js application for production
-- `pnpm run start` - Start the production Next.js server
-
-## Customizing the Whisper.cpp Symlink
-
-The demo uses a symbolic link `./whisper` to point to your whisper.cpp executable. This allows the API to find and run whisper.cpp regardless of where it's installed on your system.
-
-### Understanding the Symlink Setup
-
-The API endpoint (`pages/api/transcribe-local.js`) looks for the whisper executable at `./whisper` (relative to the project root). This symlink should point to your actual whisper.cpp installation.
-
-### Manual Symlink Configuration
-
-If you need to customize or fix the symlink:
+### Development
 
 ```bash
-# Remove existing symlink (if any)
-rm -f ./whisper
+# Start development environment
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
 
-# Create new symlink - choose the appropriate option:
+# Start in background
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
-# Option 1: If whisper.cpp was installed via Homebrew (macOS)
-ln -sf $(which whisper) ./whisper
+# View logs
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
 
-# Option 2: If you built from source in a subdirectory
-ln -sf ./whisper.cpp/main ./whisper
-
-# Option 3: If whisper.cpp is installed system-wide (Linux)
-ln -sf /usr/bin/whisper ./whisper
-ln -sf /usr/local/bin/whisper ./whisper  # Alternative location
-
-# Option 4: Custom installation path
-ln -sf /path/to/your/whisper/executable ./whisper
+# Stop services
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
 ```
 
-### Verifying the Symlink
+### Production
 
 ```bash
-# Check if symlink exists and where it points
-ls -la ./whisper
+# Start production environment
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
-# Test if the executable works
-./whisper --help
+# View logs
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs -f
 
-# Check if it can find the model
-./whisper -m ./models/ggml-small.bin --help
+# Restart services
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml restart
+
+# Stop services
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml down
 ```
 
-### Common Symlink Issues
+### Maintenance
 
-**Symlink points to wrong location:**
 ```bash
-# Check where the symlink currently points
-readlink ./whisper
+# Update images
+docker-compose pull
 
-# Update it to the correct location
-ln -sf /correct/path/to/whisper ./whisper
+# Rebuild frontend
+docker-compose build frontend
+
+# Clean up
+docker-compose down -v
+docker system prune -f
+
+# View service status
+docker-compose ps
 ```
 
-**Permission issues:**
-```bash
-# Make sure the target executable has execute permissions
-chmod +x /path/to/whisper/executable
+## API Endpoints
 
-# Recreate the symlink
-ln -sf /path/to/whisper/executable ./whisper
+### Health Check
+```
+GET /api/health
+```
+Returns service status and configuration.
+
+### Transcription
+```
+POST /api/transcribe?model=base&language=en
+Content-Type: multipart/form-data
+Body: audio file
 ```
 
-**Whisper executable not found:**
-```bash
-# Find where whisper.cpp is installed
-which whisper
-find /usr -name "whisper" 2>/dev/null
-find /usr/local -name "whisper" 2>/dev/null
+**Parameters:**
+- `model`: Whisper model size (`tiny`, `base`, `small`, `medium`, `large`)
+- `language`: Target language (`en`, `it`, `fr`, `es`, `de`)
 
-# Create symlink to the found location
-ln -sf /found/path/whisper ./whisper
+**Response:**
+```json
+{
+  "transcript": "Transcribed text",
+  "language": "en",
+  "model": "base",
+  "confidence": 0.95,
+  "size": 1024,
+  "filename": "recording.mp3"
+}
 ```
+
+**Error Responses:**
+- `400`: Invalid model or unsupported language
+- `408`: Request timeout
+- `422`: Audio processing error
+- `500`: Internal server error
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### "Whisper.cpp not available" error
-- Run the setup script: `pnpm run setup:whisper`
-- Manually install whisper.cpp: `brew install whisper-cpp` (macOS)
-- Ensure the model file exists at `./models/ggml-small.bin`
+#### Services won't start
+```bash
+# Check if ports are in use
+sudo lsof -i :3000
+sudo lsof -i :9000
 
-#### "FFmpeg failed" error
-- Install FFmpeg: `brew install ffmpeg` (macOS) or `sudo apt install ffmpeg` (Ubuntu)
-- Ensure FFmpeg is in your system PATH
+# Check Docker status
+docker --version
+docker-compose --version
+```
 
-#### Local transcription not working
-- Check that whisper.cpp executable is accessible
-- Verify the model file is downloaded and not corrupted
-- Check server console for detailed error messages
+#### Whisper backend fails to start
+```bash
+# Check logs
+docker-compose logs whisper-backend
 
-#### MP3 recording not supported
-- The browser will fallback to WebM format automatically
-- This is normal and the transcription will still work
+# Common causes:
+# - Insufficient memory (needs ~2GB for larger models)
+# - Model download timeout
+# - Port conflicts
+```
 
-#### Audio not recording
-- Check browser permissions for microphone access
-- Try using Chrome or Edge for best compatibility
-- Ensure no other application is using the microphone
+#### Frontend can't connect to backend
+```bash
+# Check network connectivity
+docker-compose exec frontend ping whisper-backend
 
-#### Symlink issues
-- **Broken symlink**: Run `ls -la ./whisper` to check if the symlink is broken (shows in red)
-- **Wrong target**: Use `readlink ./whisper` to see where it points, then recreate with correct path
-- **No execute permission**: Run `chmod +x ./whisper` or fix permissions on the target executable
-- **Symlink not found**: The `./whisper` file doesn't exist - follow the symlink creation steps above
+# Verify environment variables
+docker-compose exec frontend env | grep WHISPER
+```
 
-#### Platform-specific issues
+#### Audio recording not working
+- Check browser permissions for microphone
+- Use Chrome/Edge for best compatibility
+- Ensure HTTPS in production (required for microphone access)
 
-**macOS:**
-- If Homebrew installation fails, try: `brew update && brew install whisper-cpp`
-- For Apple Silicon Macs, whisper.cpp should automatically use optimized builds
-- If you get permission errors, try: `sudo xcode-select --install`
+#### Transcription errors
+```bash
+# Check backend logs
+docker-compose logs whisper-backend
 
-**Linux:**
-- On older Ubuntu versions, you may need to install `cmake`: `sudo apt install cmake`
-- For GPU acceleration (if available), build with: `make WHISPER_CUBLAS=1`
-- If you get "command not found" errors, ensure `/usr/local/bin` is in your PATH
+# Common issues:
+# - Unsupported audio format
+# - File too large (10MB limit)
+# - Language not supported
+# - Model not loaded
+```
 
-**General:**
-- Model download fails: Try using `wget` instead of `curl`, or download manually from the HuggingFace link
-- Out of memory errors: Try using the `tiny` model instead: `ggml-tiny.bin` (~39MB)
-- Slow transcription: The `small` model balances speed and accuracy; use `tiny` for faster results
+### Performance Tuning
 
-## Configuration
+#### Memory Usage
+```yaml
+# In docker-compose.prod.yml
+deploy:
+  resources:
+    limits:
+      memory: 2G  # Adjust based on model size
+    reservations:
+      memory: 1G
+```
 
-You can customize the Whisper.cpp transcription by modifying the API endpoint (`pages/api/transcribe-local.js`):
+#### Model Loading
+- First transcription may be slow (model loading)
+- Subsequent requests are faster
+- Use persistent volumes to cache models
 
-- **Language**: Change the `--language` parameter (currently set to 'it' for Italian)
-- **Model**: Use different model sizes (tiny, small, medium, large)
-- **Threads**: Adjust the `--threads` parameter for performance
+#### Network Optimization
+```yaml
+# Add to docker-compose.yml
+networks:
+  whisper-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+```
 
-## Security Notes
+### Logs and Debugging
 
-- The demo runs on localhost only by default
-- For production, implement proper authentication and HTTPS
-- Audio files are temporarily stored during processing and automatically cleaned up
+```bash
+# View all logs
+docker-compose logs
+
+# Follow specific service
+docker-compose logs -f frontend
+docker-compose logs -f whisper-backend
+
+# Debug container
+docker-compose exec frontend sh
+docker-compose exec whisper-backend sh
+
+# Check health status
+curl http://localhost:3000/api/health
+```
+
+## Migration from Local Setup
+
+If you're migrating from the local Whisper.cpp setup:
+
+1. **Backup your data** (if any)
+2. **Remove old dependencies:**
+   ```bash
+   rm -rf whisper.cpp/
+   rm whisper
+   rm -rf models/
+   rm setup-whisper.sh
+   ```
+3. **Follow the Docker setup** above
+4. **Update any custom configurations**
+
+## Security Considerations
+
+### Development
+- Services exposed on localhost only
+- Debug logging enabled
+- No authentication required
+
+### Production
+- Use HTTPS with your nginx proxy
+- Implement authentication if needed
+- Monitor resource usage
+- Regular security updates:
+  ```bash
+  docker-compose pull
+  docker-compose up -d
+  ```
+
+### Data Privacy
+- Audio files processed in memory only
+- No persistent storage of recordings
+- Temporary files cleaned automatically
+- All processing happens locally (no external APIs)
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make changes and test with Docker
+4. Submit a pull request
 
 ## License
 
-MIT
+MIT License - see LICENSE file for details.
+
+## Support
+
+For issues and questions:
+1. Check the troubleshooting section
+2. Review Docker logs
+3. Open an issue on GitHub
+
+---
+
+**Note:** This application processes audio entirely locally using Docker containers. No data is sent to external services, ensuring privacy and security.
