@@ -3,7 +3,10 @@ import dynamic from 'next/dynamic'
 import Head from 'next/head'
 
 // Dynamically import SwaggerUI to avoid SSR issues
-const SwaggerUI = dynamic(() => import('swagger-ui-react'), { ssr: false })
+const SwaggerUI = dynamic(() => import('swagger-ui-react'), { 
+  ssr: false,
+  loading: () => <div style={{ padding: '20px', textAlign: 'center' }}>Loading Swagger UI...</div>
+})
 
 export default function ApiDocs() {
   const [spec, setSpec] = useState(null)
