@@ -144,8 +144,27 @@ cleanup_deployment() {
     echo ""
     echo "🧹 Cleaning up existing deployment..."
     
-    # Stop and remove existing containers
+    # Stop and remove existing containers using docker compose
+    print_info "Stopping services with docker compose..."
     docker compose -f docker/docker.compose.prod.yml down --remove-orphans 2>/dev/null || true
+    
+    # Force remove specific containers if they still exist
+    print_info "Checking for stuck containers..."
+    
+    # List of containers that might be stuck
+    containers_to_remove=("whisper-backend" "asr-frontend")
+    
+    for container in "${containers_to_remove[@]}"; do
+        if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
+            print_info "Removing stuck container: $container"
+            docker stop "$container" 2>/dev/null || true
+            docker rm -f "$container" 2>/dev/null || true
+        fi
+    done
+    
+    # Remove any containers with the same image that might be conflicting
+    print_info "Removing any conflicting containers..."
+    docker ps -a --filter "ancestor=onerahmet/openai-whisper-asr-webservice:latest" --format '{{.ID}}' | xargs -r docker rm -f 2>/dev/null || true
     
     # Remove unused images and containers (but keep volumes)
     docker system prune -f
@@ -392,13 +411,31 @@ case "${1:-}" in
         ;;
     --clean)
         echo "🧹 Performing deep cleanup..."
+        
+        # Stop all containers using this compose file
         docker compose -f docker/docker.compose.prod.yml down --volumes --remove-orphans 2>/dev/null || true
+        
+        # Force remove specific containers
+        containers_to_remove=("whisper-backend" "asr-frontend")
+        for container in "${containers_to_remove[@]}"; do
+            if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
+                print_info "Force removing container: $container"
+                docker stop "$container" 2>/dev/null || true
+                docker rm -f "$container" 2>/dev/null || true
+            fi
+        done
+        
+        # Remove any containers with the same image that might be conflicting
+        print_info "Removing any conflicting containers..."
+        docker ps -a --filter "ancestor=onerahmet/openai-whisper-asr-webservice:latest" --format '{{.ID}}' | xargs -r docker rm -f 2>/dev/null || true
+        
+        # Deep system cleanup
         docker system prune -af
         print_status "Deep cleanup completed"
         main
         ;;
     --update)
-        echo "🔄 Updating existing deployment..."
+        echo "� Updating existing deployment..."
         docker compose -f docker/docker.compose.prod.yml pull
         docker compose -f docker/docker.compose.prod.yml up -d --build
         print_status "Deployment updated"
