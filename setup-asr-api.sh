@@ -50,8 +50,8 @@ check_dependencies() {
     fi
     
     # Check Docker Compose
-    if ! command -v docker-compose &> /dev/null; then
-        print_error "Docker Compose is not installed. Please install Docker Compose first."
+    if ! docker compose version &> /dev/null; then
+        print_error "Docker Compose is not available. Please ensure Docker with Compose plugin is installed."
         exit 1
     fi
     
@@ -109,11 +109,11 @@ start_services() {
     
     # Stop any existing services
     print_status "Stopping existing services..."
-    docker-compose -f docker.compose.prod.yml down 2>/dev/null || true
+    docker compose -f docker.compose.prod.yml down 2>/dev/null || true
     
     # Build and start services
     print_status "Building and starting services..."
-    docker-compose -f docker.compose.prod.yml up -d --build
+    docker compose -f docker.compose.prod.yml up -d --build
     
     # Wait for services to be ready
     print_status "Waiting for services to start..."
@@ -121,7 +121,7 @@ start_services() {
     
     # Check service status
     print_status "Checking service status..."
-    docker-compose -f docker.compose.prod.yml ps
+    docker compose -f docker.compose.prod.yml ps
 }
 
 # Test the setup
@@ -129,7 +129,7 @@ test_setup() {
     print_header "Testing the setup..."
     
     # Check if services are running
-    if ! docker-compose -f docker.compose.prod.yml ps | grep -q "Up"; then
+    if ! docker compose -f docker.compose.prod.yml ps | grep -q "Up"; then
         print_error "Services are not running properly."
         return 1
     fi
@@ -207,7 +207,7 @@ show_summary() {
     echo ""
     
     print_status "Services Status:"
-    docker-compose -f docker.compose.prod.yml ps
+    docker compose -f docker.compose.prod.yml ps
     echo ""
     
     print_status "API Access Points:"
@@ -229,7 +229,7 @@ show_summary() {
     echo "  1. Test the API using the examples in ASR_API_SETUP.md"
     echo "  2. Configure nginx for production (if not done already)"
     echo "  3. Set up SSL certificates for HTTPS"
-    echo "  4. Monitor logs: docker-compose -f docker.compose.prod.yml logs -f"
+    echo "  4. Monitor logs: docker compose -f docker.compose.prod.yml logs -f"
     echo ""
     
     print_status "Documentation:"

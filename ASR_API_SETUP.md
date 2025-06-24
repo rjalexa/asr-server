@@ -51,13 +51,13 @@ Deploy using the production Docker Compose configuration:
 
 ```bash
 # Start the services
-docker-compose -f docker.compose.prod.yml up -d
+docker compose -f docker.compose.prod.yml up -d
 
 # Check service status
-docker-compose -f docker.compose.prod.yml ps
+docker compose -f docker.compose.prod.yml ps
 
 # View logs
-docker-compose -f docker.compose.prod.yml logs -f
+docker compose -f docker.compose.prod.yml logs -f
 ```
 
 The ASR service will be available on:
@@ -294,8 +294,8 @@ Response:
 ### Log Monitoring
 ```bash
 # Docker logs
-docker-compose -f docker.compose.prod.yml logs -f whisper-backend
-docker-compose -f docker.compose.prod.yml logs -f frontend
+docker compose -f docker.compose.prod.yml logs -f whisper-backend
+docker compose -f docker.compose.prod.yml logs -f frontend
 
 # Nginx logs
 sudo tail -f /var/log/nginx/access.log
@@ -323,7 +323,7 @@ cat .secrets
 ls -la .secrets
 
 # Restart services after key changes
-docker-compose -f docker.compose.prod.yml restart
+docker compose -f docker.compose.prod.yml restart
 ```
 
 #### 3. Rate Limiting Too Strict
@@ -332,7 +332,7 @@ docker-compose -f docker.compose.prod.yml restart
 echo "ASR_RATE_LIMIT_PER_MINUTE=60" >> .env.production
 
 # Restart services
-docker-compose -f docker.compose.prod.yml restart
+docker compose -f docker.compose.prod.yml restart
 ```
 
 #### 4. Large File Upload Issues
