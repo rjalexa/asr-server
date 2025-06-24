@@ -195,6 +195,17 @@ ASR_API_KEY_2=asr_backup_another_key_here
 ASR_API_KEY_3=asr_dev_development_key_here
 ```
 
+#### Automatic Permission Handling
+
+The production Docker container automatically handles file permissions for the `.secrets` file:
+
+- **Container Startup**: An entrypoint script runs as root to fix permissions
+- **Permission Fix**: Sets `chmod 644` and `chown nextjs:nodejs` on the mounted `.secrets` file
+- **Security**: Switches to non-root `nextjs` user after fixing permissions
+- **Reliability**: Ensures authentication works regardless of host file permissions
+
+This eliminates the need for manual permission fixes when deploying or updating the application.
+
 ### Port Configuration
 
 | Environment | Frontend Port | Backend Access | Use Case |
@@ -430,6 +441,27 @@ cat .secrets
 # Restart services after key changes
 docker compose -f docker/docker.compose.dev.yml restart
 ```
+
+#### Authentication Permission Issues
+If you encounter "Invalid API key" errors even with correct keys:
+
+```bash
+# Check if .secrets file is mounted in container
+docker compose -f docker/docker.compose.prod.yml exec frontend ls -la /app/.secrets
+
+# Check file permissions on host
+ls -la .secrets
+
+# For production: rebuild container to apply entrypoint script
+docker compose -f docker/docker.compose.prod.yml down
+docker compose -f docker/docker.compose.prod.yml build --no-cache
+docker compose -f docker/docker.compose.prod.yml up -d
+
+# For development: fix permissions manually if needed
+chmod 644 .secrets
+```
+
+The production container automatically fixes permissions via an entrypoint script, but development environments may require manual permission fixes.
 
 #### Whisper Backend Not Ready
 - Whisper backend can take 30-60 seconds to initialize
