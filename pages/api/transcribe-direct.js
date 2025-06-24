@@ -4,6 +4,77 @@ import fetch from 'node-fetch'
 import fs from 'fs'
 import path from 'path'
 
+/**
+ * @swagger
+ * /api/transcribe-direct:
+ *   post:
+ *     summary: Direct Audio Transcription (Legacy)
+ *     description: Legacy direct transcription endpoint with enhanced response format
+ *     tags:
+ *       - Enhanced API
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: language
+ *         schema:
+ *           type: string
+ *           enum: [en, it, fr, es, de]
+ *           default: en
+ *         description: Audio language
+ *       - in: query
+ *         name: model
+ *         schema:
+ *           type: string
+ *           enum: [tiny, base, small, medium, large]
+ *           default: base
+ *         description: Whisper model to use
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               audio:
+ *                 type: string
+ *                 format: binary
+ *                 description: Audio file to transcribe (max 50MB)
+ *             required:
+ *               - audio
+ *     responses:
+ *       200:
+ *         description: Successful transcription with enhanced metadata
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EnhancedTranscriptionResponse'
+ *       401:
+ *         description: Missing or invalid API key
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       429:
+ *         description: Rate limit exceeded
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/RateLimitError'
+ *       400:
+ *         description: Bad request (invalid file, parameters, etc.)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 // Configure multer for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),

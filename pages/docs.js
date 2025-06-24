@@ -99,56 +99,121 @@ export default function ApiDocs() {
         <title>ASR API Documentation</title>
         <meta name="description" content="Interactive API documentation for ASR Server" />
         <link rel="icon" href="/favicon.ico" />
+        <style jsx global>{`
+          /* Hide Swagger UI banner/info section */
+          .swagger-ui .info {
+            display: none !important;
+          }
+          
+          /* Style the authorize button */
+          .swagger-ui .auth-wrapper .authorize {
+            background-color: #dc3545 !important;
+            border-color: #dc3545 !important;
+            color: white !important;
+          }
+          
+          /* Style the authorize button when authorized (green) */
+          .swagger-ui .auth-wrapper .authorize.unlocked {
+            background-color: #28a745 !important;
+            border-color: #28a745 !important;
+            color: white !important;
+          }
+          
+          /* Style the authorize button on hover */
+          .swagger-ui .auth-wrapper .authorize:hover {
+            background-color: #c82333 !important;
+            border-color: #bd2130 !important;
+          }
+          
+          /* Style the authorize button when authorized on hover */
+          .swagger-ui .auth-wrapper .authorize.unlocked:hover {
+            background-color: #218838 !important;
+            border-color: #1e7e34 !important;
+          }
+          
+          /* Hide the Swagger UI topbar */
+          .swagger-ui .topbar {
+            display: none !important;
+          }
+          
+          /* Improve overall styling */
+          .swagger-ui {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+          }
+          
+          /* Style operation blocks */
+          .swagger-ui .opblock {
+            border-radius: 8px !important;
+            margin-bottom: 15px !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+          }
+          
+          /* Style the try it out button */
+          .swagger-ui .btn.try-out__btn {
+            background-color: #007bff !important;
+            border-color: #007bff !important;
+            color: white !important;
+          }
+          
+          /* Style the execute button */
+          .swagger-ui .btn.execute {
+            background-color: #28a745 !important;
+            border-color: #28a745 !important;
+            color: white !important;
+          }
+          
+          /* Style the clear button */
+          .swagger-ui .btn.btn-clear {
+            background-color: #6c757d !important;
+            border-color: #6c757d !important;
+            color: white !important;
+          }
+          
+          /* Improve parameter styling */
+          .swagger-ui .parameters-col_description p {
+            margin: 0 !important;
+          }
+          
+          /* Style the models section */
+          .swagger-ui .model-box {
+            background-color: #f8f9fa !important;
+            border-radius: 6px !important;
+          }
+        `}</style>
       </Head>
       
       <div style={{ minHeight: '100vh', backgroundColor: '#fafafa' }}>
-        {/* Header */}
-        <div style={{
-          backgroundColor: '#1976d2',
-          color: 'white',
-          padding: '20px',
-          marginBottom: '20px'
-        }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <h1 style={{ margin: 0, fontSize: '28px' }}>ASR Server API Documentation</h1>
-            <p style={{ margin: '10px 0 0 0', opacity: 0.9 }}>
-              Interactive documentation for the Automatic Speech Recognition API
-            </p>
-          </div>
-        </div>
-
         {/* API Key Notice */}
-        <div style={{ maxWidth: '1200px', margin: '0 auto 20px auto', padding: '0 20px' }}>
+        <div style={{ maxWidth: '1200px', margin: '20px auto', padding: '0 20px' }}>
           <div style={{
             backgroundColor: '#fff3cd',
             border: '1px solid #ffeaa7',
-            borderRadius: '4px',
-            padding: '15px',
+            borderRadius: '8px',
+            padding: '20px',
             marginBottom: '20px'
           }}>
-            <h3 style={{ margin: '0 0 10px 0', color: '#856404' }}>🔑 API Key Required</h3>
-            <p style={{ margin: 0, color: '#856404' }}>
+            <h3 style={{ margin: '0 0 15px 0', color: '#856404', fontSize: '18px' }}>🔑 API Key Required</h3>
+            <p style={{ margin: '0 0 15px 0', color: '#856404' }}>
               All API endpoints require authentication. To test the endpoints below:
             </p>
-            <ol style={{ margin: '10px 0 0 0', color: '#856404' }}>
-              <li>Get your API key from the <code>.secrets</code> file (e.g., <code>asr_prod_abc123def456ghi789</code>)</li>
-              <li>Click the &quot;Authorize&quot; button below</li>
-              <li>Enter the complete API key value exactly as it appears in the file</li>
-              <li>Click &quot;Authorize&quot; to authenticate your requests</li>
+            <ol style={{ margin: '0 0 15px 0', color: '#856404', paddingLeft: '20px' }}>
+              <li style={{ marginBottom: '5px' }}>Get your API key from the <code style={{ backgroundColor: '#f5f5f5', padding: '2px 4px', borderRadius: '3px' }}>.secrets</code> file</li>
+              <li style={{ marginBottom: '5px' }}>Click the <strong>"Authorize"</strong> button in the Swagger UI</li>
+              <li style={{ marginBottom: '5px' }}>Enter the complete API key value exactly as it appears in the file</li>
+              <li>Click <strong>"Authorize"</strong> to authenticate your requests</li>
             </ol>
             <div style={{ 
               backgroundColor: '#e3f2fd', 
               border: '1px solid #2196f3', 
-              borderRadius: '4px', 
-              padding: '10px', 
-              marginTop: '10px' 
+              borderRadius: '6px', 
+              padding: '15px'
             }}>
               <strong style={{ color: '#1976d2' }}>Example:</strong>
               <br />
-              <span style={{ color: '#1976d2' }}>
-                If your .secrets file contains: <code>ASR_API_KEY_1=asr_prod_abc123def456ghi789</code>
+              <span style={{ color: '#1976d2', fontSize: '14px' }}>
+                If your .secrets file contains: <code style={{ backgroundColor: '#f5f5f5', padding: '2px 4px', borderRadius: '3px' }}>ASR_API_KEY_1=asr_prod_abc123def456ghi789</code>
                 <br />
-                Enter in authorization: <code>asr_prod_abc123def456ghi789</code>
+                Enter in authorization: <code style={{ backgroundColor: '#f5f5f5', padding: '2px 4px', borderRadius: '3px' }}>asr_prod_abc123def456ghi789</code>
               </span>
             </div>
           </div>
@@ -159,13 +224,19 @@ export default function ApiDocs() {
           <SwaggerUI 
             spec={spec}
             docExpansion="list"
-            defaultModelsExpandDepth={2}
-            defaultModelExpandDepth={2}
+            defaultModelsExpandDepth={3}
+            defaultModelExpandDepth={3}
             displayRequestDuration={true}
             tryItOutEnabled={true}
             filter={true}
             showExtensions={true}
             showCommonExtensions={true}
+            deepLinking={true}
+            displayOperationId={false}
+            defaultModelRendering="example"
+            showMutatedRequest={true}
+            supportedSubmitMethods={['get', 'post', 'put', 'delete', 'patch']}
+            validatorUrl={null}
             requestInterceptor={(request) => {
               // Add any request modifications here if needed
               return request
@@ -173,6 +244,10 @@ export default function ApiDocs() {
             responseInterceptor={(response) => {
               // Add any response modifications here if needed
               return response
+            }}
+            onComplete={() => {
+              // Ensure all operations are properly rendered
+              console.log('Swagger UI loaded successfully')
             }}
           />
         </div>
