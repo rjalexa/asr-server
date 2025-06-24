@@ -37,11 +37,11 @@ A Next.js application demonstrating real-time audio streaming with OpenAI Whispe
 
 3. **Run the transcription server:**
    ```bash
-   # With OpenAI Whisper (recommended)
+   # Run the Whisper transcription server
    pnpm run server:whisper
    
-   # Or with mock transcription (for testing)
-   pnpm run server:mock
+   # Or use the default server command
+   pnpm run server
    ```
 
 4. **In a new terminal, run the Next.js dev server:**
@@ -72,7 +72,7 @@ A Next.js application demonstrating real-time audio streaming with OpenAI Whispe
 
 2. **Backend** (Node.js/WebSocket):
    - Receives audio chunks from the frontend
-   - Buffers audio data (3-second windows)
+   - Buffers audio data (2-second processing intervals)
    - Sends audio to OpenAI Whisper API
    - Streams transcription back to frontend
 
@@ -85,8 +85,6 @@ whisper-streaming-demo/
 │   ├── _app.js
 │   └── index.js         # Main UI
 ├── server-whisper.mjs   # OpenAI Whisper server
-├── server-mock.mjs      # Mock server for testing
-├── server.mjs           # Default server (runs whisper)
 ├── next.config.mjs
 ├── package.json
 ├── .env.example
@@ -96,9 +94,11 @@ whisper-streaming-demo/
 ## Available Scripts
 
 - `pnpm run dev` - Start Next.js development server
+- `pnpm run dev:all` - Start both frontend and backend concurrently
 - `pnpm run server` - Start the Whisper transcription server
 - `pnpm run server:whisper` - Explicitly run Whisper server
-- `pnpm run server:mock` - Run mock server (for testing without API key)
+- `pnpm run build` - Build the Next.js application for production
+- `pnpm run start` - Start the production Next.js server
 
 ## Troubleshooting
 
@@ -118,10 +118,10 @@ whisper-streaming-demo/
 
 ## Configuration
 
-The transcription server processes audio in 3-second chunks by default. You can modify this in `server-whisper.mjs` by changing the interval:
+The transcription server processes audio in 2-second chunks by default. You can modify this in `server-whisper.mjs` by changing the `PROCESS_INTERVAL` constant:
 
 ```javascript
-}, 3000); // Change this value (in milliseconds)
+const PROCESS_INTERVAL = 2000; // Change this value (in milliseconds)
 ```
 
 ## Security Notes

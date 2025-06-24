@@ -5,16 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "dev:all": "concurrently \"pnpm run dev\" \"pnpm run server:whisper-webm-fixed\" --names \"frontend,backend\" --prefix-colors \"cyan,magenta\"",
+    "dev:all": "concurrently \"pnpm run dev\" \"pnpm run server:whisper\" --names \"frontend,backend\" --prefix-colors \"cyan,magenta\"",
     "build": "next build",
     "start": "next start",
-    "server": "node server.mjs",
-    "server:mock": "node server-mock.mjs",
-    "server:whisper": "node server-whisper.mjs",
-    "server:cjs": "node server.cjs",
-    "server:whisper-fixed": "node server-whisper-fixed.mjs",
-    "server:whisper-webm": "node server-whisper-webm.mjs",
-    "server:whisper-webm-fixed": "node server-whisper-webm-fixed.mjs"
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "server": "node server-whisper.mjs",
+    "server:whisper": "node server-whisper.mjs"
   },
   "dependencies": {
     "next": "14.0.0",
@@ -23,6 +20,8 @@
     "ws": "^8.14.2"
   },
   "devDependencies": {
-    "concurrently": "^9.2.0"
+    "concurrently": "^9.2.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.0.0"
   }
 }

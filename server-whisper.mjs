@@ -1,5 +1,5 @@
-// server-whisper-webm-fixed.mjs – Fixed streaming transcription
-// Fixes:
+// server-whisper.mjs – Whisper streaming transcription server
+// Features:
 // 1. Proper chunked processing instead of accumulating all audio
 // 2. Incremental transcription with overlap handling
 // 3. Better state management for resume functionality
@@ -251,7 +251,7 @@ function extractNewText(currentTranscript, previousFullTranscript) {
   return currentTranscript;
 }
 
-server.listen(port, () => console.log(`Fixed streaming server running at http://localhost:${port}`));
+server.listen(port, () => console.log(`Whisper streaming server running at http://localhost:${port}`));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FFmpeg helper – WebM/Opus → 16‑kHz WAV with improved error handling
