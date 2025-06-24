@@ -1,0 +1,104 @@
+/* Custom Swagger UI Styles */
+
+/* Authorize button - NOT authorized (red) */
+.swagger-ui .btn.authorize.locked {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: white !important;
+}
+
+/* Authorize button - authorized (green) */
+.swagger-ui .btn.authorize.unlocked {
+  background-color: #28a745 !important;
+  border-color: #28a745 !important;
+  color: white !important;
+}
+
+/* Authorize button hover - NOT authorized */
+.swagger-ui .btn.authorize.locked:hover {
+  background-color: #c82333 !important;
+  border-color: #bd2130 !important;
+  opacity: 1 !important;
+}
+
+/* Authorize button hover - authorized */
+.swagger-ui .btn.authorize.unlocked:hover {
+  background-color: #218838 !important;
+  border-color: #1e7e34 !important;
+  opacity: 1 !important;
+}
+
+/* Ensure SVG icons are white */
+.swagger-ui .btn.authorize.locked svg,
+.swagger-ui .btn.authorize.unlocked svg {
+  fill: white !important;
+}
+
+/* Fix operation block expansion */
+.swagger-ui .opblock .opblock-summary {
+  cursor: pointer !important;
+  user-select: none !important;
+}
+
+.swagger-ui .opblock .opblock-summary:hover {
+  background-color: rgba(0,0,0,0.02);
+}
+
+/* Ensure arrow animation works */
+.swagger-ui .opblock .arrow {
+  transition: transform 0.3s ease !important;
+  transform-origin: center !important;
+}
+
+.swagger-ui .opblock.is-open .arrow {
+  transform: rotate(90deg) !important;
+}
+
+/* Fix operation body visibility */
+.swagger-ui .opblock .opblock-body {
+  display: none;
+  overflow: hidden;
+}
+
+.swagger-ui .opblock.is-open .opblock-body {
+  display: block;
+}
+
+/* Ensure tag sections are visible */
+.swagger-ui .opblock-tag-section {
+  display: block !important;
+}
+
+/* Fix deep linking */
+.swagger-ui .opblock-tag {
+  cursor: pointer !important;
+}
+
+/* Additional button styling */
+.swagger-ui .btn {
+  transition: all 0.3s ease;
+}
+
+/* Modal authorize button */
+.swagger-ui .modal-ux .btn.authorize {
+  background-color: #007bff !important;
+  border-color: #007bff !important;
+  color: white !important;
+}
+
+.swagger-ui .modal-ux .btn.authorize:hover {
+  background-color: #0056b3 !important;
+  border-color: #004085 !important;
+}
+
+/* Cancel button in modal */
+.swagger-ui .modal-ux .btn.cancel {
+  background-color: #6c757d !important;
+  border-color: #6c757d !important;
+  color: white !important;
+}
+
+.swagger-ui .modal-ux .btn.cancel:hover {
+  background-color: #5a6268 !important;
+  border-color: #545b62 !important;
+}

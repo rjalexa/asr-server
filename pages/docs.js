@@ -99,14 +99,15 @@ export default function ApiDocs() {
         <title>ASR API Documentation</title>
         <meta name="description" content="Interactive API documentation for ASR Server" />
         <link rel="icon" href="/favicon.ico" />
+        <link rel="stylesheet" href="/swagger-custom.css" />
         <style jsx global>{`
           /* Hide Swagger UI banner/info section */
           .swagger-ui .info {
             display: none !important;
           }
           
-          /* Style the authorize button */
-          .swagger-ui .auth-wrapper .authorize {
+          /* Style the authorize button - NOT authorized (red) */
+          .swagger-ui .auth-wrapper .authorize.locked {
             background-color: #dc3545 !important;
             border-color: #dc3545 !important;
             color: white !important;
@@ -119,8 +120,8 @@ export default function ApiDocs() {
             color: white !important;
           }
           
-          /* Style the authorize button on hover */
-          .swagger-ui .auth-wrapper .authorize:hover {
+          /* Style the authorize button on hover - NOT authorized */
+          .swagger-ui .auth-wrapper .authorize.locked:hover {
             background-color: #c82333 !important;
             border-color: #bd2130 !important;
           }
@@ -129,6 +130,33 @@ export default function ApiDocs() {
           .swagger-ui .auth-wrapper .authorize.unlocked:hover {
             background-color: #218838 !important;
             border-color: #1e7e34 !important;
+          }
+          
+          /* Additional specificity for authorize button states */
+          .swagger-ui .auth-wrapper .authorize.locked svg {
+            fill: white !important;
+          }
+          
+          .swagger-ui .auth-wrapper .authorize.unlocked svg {
+            fill: white !important;
+          }
+          
+          /* Fix for operation expansion */
+          .swagger-ui .opblock .opblock-summary {
+            cursor: pointer !important;
+          }
+          
+          .swagger-ui .opblock.is-open .opblock-summary {
+            border-bottom: 1px solid #000;
+          }
+          
+          /* Ensure arrow rotation works */
+          .swagger-ui .opblock .arrow {
+            transition: transform 0.3s !important;
+          }
+          
+          .swagger-ui .opblock.is-open .arrow {
+            transform: rotate(90deg) !important;
           }
           
           /* Hide the Swagger UI topbar */
@@ -179,6 +207,23 @@ export default function ApiDocs() {
             background-color: #f8f9fa !important;
             border-radius: 6px !important;
           }
+          
+          /* Fix deep linking and ensure operations are clickable */
+          .swagger-ui .opblock-tag-section {
+            display: block !important;
+          }
+          
+          .swagger-ui .opblock {
+            display: block !important;
+          }
+          
+          .swagger-ui .opblock-body {
+            display: none;
+          }
+          
+          .swagger-ui .opblock.is-open .opblock-body {
+            display: block;
+          }
         `}</style>
       </Head>
       
@@ -224,8 +269,8 @@ export default function ApiDocs() {
           <SwaggerUI 
             spec={spec}
             docExpansion="list"
-            defaultModelsExpandDepth={3}
-            defaultModelExpandDepth={3}
+            defaultModelsExpandDepth={1}
+            defaultModelExpandDepth={1}
             displayRequestDuration={true}
             tryItOutEnabled={true}
             filter={true}
@@ -237,6 +282,15 @@ export default function ApiDocs() {
             showMutatedRequest={true}
             supportedSubmitMethods={['get', 'post', 'put', 'delete', 'patch']}
             validatorUrl={null}
+            persistAuthorization={true}
+            presets={[
+              SwaggerUI.presets.apis,
+              SwaggerUI.SwaggerUIStandalonePreset
+            ]}
+            plugins={[
+              SwaggerUI.plugins.DownloadUrl
+            ]}
+            layout="BaseLayout"
             requestInterceptor={(request) => {
               // Add any request modifications here if needed
               return request
@@ -245,9 +299,82 @@ export default function ApiDocs() {
               // Add any response modifications here if needed
               return response
             }}
-            onComplete={() => {
+            onComplete={(system) => {
               // Ensure all operations are properly rendered
               console.log('Swagger UI loaded successfully')
+              
+              // Fix for endpoint expansion
+              setTimeout(() => {
+                // Add click handlers to all operation summaries
+                const summaries = document.querySelectorAll('.opblock-summary')
+                summaries.forEach(summary => {
+                  // Remove any existing click handlers
+                  const newSummary = summary.cloneNode(true)
+                  summary.parentNode.replaceChild(newSummary, summary)
+                  
+                  // Add new click handler
+                  newSummary.addEventListener('click', function(e) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    const opblock = this.closest('.opblock')
+                    if (opblock) {
+                      opblock.classList.toggle('is-open')
+                      // Update the URL hash
+                      const operationId = opblock.getAttribute('id')
+                      if (operationId) {
+                        window.location.hash = `#/${operationId}`
+                      }
+                    }
+                  })
+                })
+                
+                // Handle deep linking
+                const hash = window.location.hash
+                if (hash) {
+                  const element = document.querySelector(hash)
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' })
+                    // Try to expand the operation if it's an operation link
+                    const opblock = element.closest('.opblock')
+                    if (opblock && !opblock.classList.contains('is-open')) {
+                      opblock.classList.add('is-open')
+                    }
+                  }
+                }
+                
+                // Add mutation observer to handle dynamically added elements
+                const observer = new MutationObserver((mutations) => {
+                  mutations.forEach((mutation) => {
+                    if (mutation.addedNodes.length) {
+                      mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === 1 && node.classList && node.classList.contains('opblock')) {
+                          const summary = node.querySelector('.opblock-summary')
+                          if (summary) {
+                            summary.addEventListener('click', function(e) {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              const opblock = this.closest('.opblock')
+                              if (opblock) {
+                                opblock.classList.toggle('is-open')
+                                const operationId = opblock.getAttribute('id')
+                                if (operationId) {
+                                  window.location.hash = `#/${operationId}`
+                                }
+                              }
+                            })
+                          }
+                        }
+                      })
+                    }
+                  })
+                })
+                
+                // Start observing
+                const targetNode = document.querySelector('.swagger-ui')
+                if (targetNode) {
+                  observer.observe(targetNode, { childList: true, subtree: true })
+                }
+              }, 500)
             }}
           />
         </div>
