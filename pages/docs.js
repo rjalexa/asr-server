@@ -198,9 +198,9 @@ export default function ApiDocs() {
             </p>
             <ol style={{ margin: '0 0 15px 0', color: '#856404', paddingLeft: '20px' }}>
               <li style={{ marginBottom: '5px' }}>Get your API key from the <code style={{ backgroundColor: '#f5f5f5', padding: '2px 4px', borderRadius: '3px' }}>.secrets</code> file</li>
-              <li style={{ marginBottom: '5px' }}>Click the <strong>"Authorize"</strong> button in the Swagger UI</li>
+              <li style={{ marginBottom: '5px' }}>Click the <strong>&quot;Authorize&quot;</strong> button in the Swagger UI</li>
               <li style={{ marginBottom: '5px' }}>Enter the complete API key value exactly as it appears in the file</li>
-              <li>Click <strong>"Authorize"</strong> to authenticate your requests</li>
+              <li>Click <strong>&quot;Authorize&quot;</strong> to authenticate your requests</li>
             </ol>
             <div style={{ 
               backgroundColor: '#e3f2fd', 
