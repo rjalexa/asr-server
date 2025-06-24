@@ -10,6 +10,8 @@ RUN pnpm install
 
 # Copy source code and build
 COPY . .
+# Create empty models directory as placeholder (not used in production)
+RUN rm -rf models && mkdir -p models && echo "# This directory is not used in production - using backend whisper service" > models/README.md
 RUN pnpm run build
 
 # Production stage
