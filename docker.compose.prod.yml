@@ -12,6 +12,7 @@ services:
       - WHISPER_MODEL=${WHISPER_MODEL:-base}
       - WHISPER_DEFAULT_LANGUAGE=${WHISPER_DEFAULT_LANGUAGE:-en}
       - SUPPORTED_LANGUAGES=${SUPPORTED_LANGUAGES:-en,it,fr,es,de}
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:9001
     restart: unless-stopped
     volumes:
       - /app/node_modules
