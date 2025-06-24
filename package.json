@@ -11,13 +11,17 @@
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "server": "node server-whisper.mjs",
-    "server:whisper": "node server-whisper.mjs"
+    "server:whisper": "node server-whisper.mjs",
+    "setup:whisper": "./setup-whisper.sh"
   },
   "dependencies": {
     "next": "14.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "ws": "^8.14.2"
+    "ws": "^8.14.2",
+    "whisper-node": "^1.1.1",
+    "multer": "^1.4.5-lts.1",
+    "lamejs": "^1.2.1"
   },
   "devDependencies": {
     "concurrently": "^9.2.0",

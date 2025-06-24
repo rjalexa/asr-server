@@ -8,3 +8,14 @@ pnpm-lock.yaml
 .pnpm-store/
 temp_audio_*.wav
 temp_audio_*.webm
+
+# Whisper models and build files
+models/
+whisper.cpp/
+whisper
+main
+*.bin
+*.ggml
+
+# Temporary audio files
+/tmp/audio_*.wav

@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import Navigation from '../components/Navigation'
 
 export default function Home() {
   const [isRecording, setIsRecording] = useState(false)
@@ -170,6 +171,7 @@ export default function Home() {
   return (
     <div style={{ padding: '2rem', fontFamily: 'system-ui', maxWidth: '800px', margin: '0 auto' }}>
       <h1>Whisper Streaming Demo</h1>
+      <Navigation />
       
       <div style={{ marginBottom: '2rem' }}>
         <button
