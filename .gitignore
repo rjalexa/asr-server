@@ -9,6 +9,9 @@ pnpm-lock.yaml
 temp_audio_*.wav
 temp_audio_*.webm
 
+# API Keys and Secrets
+.secrets
+
 # Whisper models and build files
 models/
 whisper.cpp/

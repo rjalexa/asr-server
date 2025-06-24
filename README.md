@@ -13,6 +13,9 @@ A Next.js application for MP3 audio recording and transcription using Docker-bas
 - 🐳 Fully containerized with Docker Compose
 - 🎯 Clean, modern UI with model and language selection
 - ⚡ No local dependencies required
+- 🔑 **NEW: Direct API access with API key protection**
+- 🚀 **NEW: Production-ready nginx configuration**
+- 📊 **NEW: Rate limiting and security features**
 
 ## Architecture
 
@@ -202,7 +205,51 @@ docker system prune -f
 docker compose ps
 ```
 
-## API Endpoints
+## API Access
+
+### 🔑 Direct API Access (NEW)
+
+The ASR server now supports direct API access with API key authentication and rate limiting. This allows external applications to use the transcription service programmatically.
+
+#### Quick Setup
+```bash
+# Run the automated setup script
+./setup-asr-api.sh
+
+# Or follow the manual setup in ASR_API_SETUP.md
+```
+
+#### API Endpoints
+
+**Direct ASR Service** (Port 9001):
+```bash
+curl -X POST \
+  -H "X-API-Key: your-api-key" \
+  -F "audio_file=@recording.mp3" \
+  "https://your-domain.com/asr/asr?language=en&output=json"
+```
+
+**Next.js API Endpoint**:
+```bash
+curl -X POST \
+  -H "X-API-Key: your-api-key" \
+  -F "audio=@recording.mp3" \
+  "https://your-domain.com/api/transcribe-direct?language=en&model=base"
+```
+
+#### Features
+- 🔐 API key authentication from `.secrets` file
+- 🚦 Rate limiting (30 requests/minute per key)
+- 🛡️ Security headers and CORS support
+- 📊 Rate limit headers in responses
+- 🔧 Configurable via environment variables
+
+#### Documentation
+- **Complete Setup Guide**: `ASR_API_SETUP.md`
+- **Nginx Configuration**: `nginx/asr-nginx.conf`
+- **Setup Script**: `./setup-asr-api.sh`
+
+### Web Interface API Endpoints
 
 ### Health Check
 ```
@@ -210,7 +257,7 @@ GET /api/health
 ```
 Returns service status and configuration.
 
-### Transcription
+### Transcription (Web Interface)
 ```
 POST /api/transcribe?model=base&language=en
 Content-Type: multipart/form-data
@@ -233,10 +280,42 @@ Body: audio file
 }
 ```
 
+### Direct API Transcription (API Key Required)
+```
+POST /api/transcribe-direct?model=base&language=en
+X-API-Key: your-api-key
+Content-Type: multipart/form-data
+Body: audio file (field name: "audio")
+```
+
+**Enhanced Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "transcript": "Transcribed text",
+    "language": "en",
+    "model": "base",
+    "confidence": 0.95,
+    "metadata": {
+      "filename": "recording.mp3",
+      "size": 1048576,
+      "processedAt": "2025-01-24T14:30:00.000Z"
+    }
+  },
+  "rateLimit": {
+    "remaining": 29,
+    "resetTime": "2025-01-24T14:31:00.000Z"
+  }
+}
+```
+
 **Error Responses:**
 - `400`: Invalid model or unsupported language
+- `401`: Missing or invalid API key
 - `408`: Request timeout
 - `422`: Audio processing error
+- `429`: Rate limit exceeded
 - `500`: Internal server error
 
 ## Troubleshooting

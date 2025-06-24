@@ -19,6 +19,10 @@ services:
           memory: 256M
 
   whisper-backend:
+    ports:
+      - "9001:9000"  # Expose ASR service to host
+    volumes:
+      - ./.secrets:/app/.secrets:ro  # Mount secrets file read-only
     restart: unless-stopped
     deploy:
       resources:
