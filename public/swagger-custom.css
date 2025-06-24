@@ -66,31 +66,31 @@
   border-color: #50e3c2;
 }
 
-/* Authorize button - NOT authorized (red) */
+/* Authorize button - NOT authorized (green) */
 .swagger-ui .btn.authorize.locked {
-  background-color: #dc3545 !important;
-  border-color: #dc3545 !important;
-  color: white !important;
-}
-
-/* Authorize button - authorized (green) */
-.swagger-ui .btn.authorize.unlocked {
   background-color: #28a745 !important;
   border-color: #28a745 !important;
   color: white !important;
 }
 
+/* Authorize button - authorized (red) */
+.swagger-ui .btn.authorize.unlocked {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: white !important;
+}
+
 /* Authorize button hover - NOT authorized */
 .swagger-ui .btn.authorize.locked:hover {
-  background-color: #c82333 !important;
-  border-color: #bd2130 !important;
+  background-color: #218838 !important;
+  border-color: #1e7e34 !important;
   opacity: 1 !important;
 }
 
 /* Authorize button hover - authorized */
 .swagger-ui .btn.authorize.unlocked:hover {
-  background-color: #218838 !important;
-  border-color: #1e7e34 !important;
+  background-color: #c82333 !important;
+  border-color: #bd2130 !important;
   opacity: 1 !important;
 }
 
