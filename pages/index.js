@@ -113,7 +113,7 @@ export default function Home() {
       }
 
       setTranscript(result.transcript)
-      setStatus(`Transcription complete! (Model: ${result.model}, Language: ${result.language})`)
+      setStatus(`Transcription complete! (Model: ${result.model}, Output lang: ${result.language})`)
 
     } catch (error) {
       setStatus('Error: ' + error.message)
@@ -199,7 +199,7 @@ export default function Home() {
           
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#374151' }}>
-              Language:
+              Output lang:
             </label>
             <select
               value={selectedLanguage}
