@@ -11,7 +11,7 @@ if ! command -v docker &> /dev/null; then
 fi
 
 # Check if Docker Compose is installed
-if ! command -v docker-compose &> /dev/null; then
+if ! command -v docker &> /dev/null || ! docker compose version &> /dev/null; then
     echo "❌ Docker Compose is not installed. Please install Docker Compose first."
     echo "   Visit: https://docs.docker.com/compose/install/"
     exit 1
@@ -55,7 +55,7 @@ echo "🎉 Migration complete!"
 echo ""
 echo "Next steps:"
 echo "1. Start development environment:"
-echo "   docker-compose -f docker-compose.yml -f docker-compose.dev.yml up"
+echo "   docker compose -f docker.compose.yml -f docker.compose.dev.yml up"
 echo ""
 echo "2. Or use npm scripts:"
 echo "   npm run docker:dev"

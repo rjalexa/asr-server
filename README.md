@@ -54,7 +54,7 @@ That's it! No Node.js, Python, or other dependencies needed on your host machine
 
 3. **Start development environment:**
    ```bash
-   docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+   docker compose -f docker.compose.yml -f docker.compose.dev.yml up
    ```
 
 4. **Access the application:**
@@ -78,7 +78,7 @@ The development environment includes:
 
 2. **Build and start production:**
    ```bash
-   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+   docker compose -f docker.compose.yml -f docker.compose.prod.yml up -d
    ```
 
 3. **Configure your existing nginx:**
@@ -157,49 +157,49 @@ Additional languages can be added by modifying the `SUPPORTED_LANGUAGES` environ
 
 ```bash
 # Start development environment
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+docker compose -f docker.compose.yml -f docker.compose.dev.yml up
 
 # Start in background
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+docker compose -f docker.compose.yml -f docker.compose.dev.yml up -d
 
 # View logs
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
+docker compose -f docker.compose.yml -f docker.compose.dev.yml logs -f
 
 # Stop services
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
+docker compose -f docker.compose.yml -f docker.compose.dev.yml down
 ```
 
 ### Production
 
 ```bash
 # Start production environment
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker compose -f docker.compose.yml -f docker.compose.prod.yml up -d
 
 # View logs
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs -f
+docker compose -f docker.compose.yml -f docker.compose.prod.yml logs -f
 
 # Restart services
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml restart
+docker compose -f docker.compose.yml -f docker.compose.prod.yml restart
 
 # Stop services
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml down
+docker compose -f docker.compose.yml -f docker.compose.prod.yml down
 ```
 
 ### Maintenance
 
 ```bash
 # Update images
-docker-compose pull
+docker compose pull
 
 # Rebuild frontend
-docker-compose build frontend
+docker compose build frontend
 
 # Clean up
-docker-compose down -v
+docker compose down -v
 docker system prune -f
 
 # View service status
-docker-compose ps
+docker compose ps
 ```
 
 ## API Endpoints
@@ -251,13 +251,13 @@ sudo lsof -i :9000
 
 # Check Docker status
 docker --version
-docker-compose --version
+docker compose version
 ```
 
 #### Whisper backend fails to start
 ```bash
 # Check logs
-docker-compose logs whisper-backend
+docker compose logs whisper-backend
 
 # Common causes:
 # - Insufficient memory (needs ~2GB for larger models)
@@ -268,10 +268,10 @@ docker-compose logs whisper-backend
 #### Frontend can't connect to backend
 ```bash
 # Check network connectivity
-docker-compose exec frontend ping whisper-backend
+docker compose exec frontend ping whisper-backend
 
 # Verify environment variables
-docker-compose exec frontend env | grep WHISPER
+docker compose exec frontend env | grep WHISPER
 ```
 
 #### Audio recording not working
@@ -282,7 +282,7 @@ docker-compose exec frontend env | grep WHISPER
 #### Transcription errors
 ```bash
 # Check backend logs
-docker-compose logs whisper-backend
+docker compose logs whisper-backend
 
 # Common issues:
 # - Unsupported audio format
@@ -295,7 +295,7 @@ docker-compose logs whisper-backend
 
 #### Memory Usage
 ```yaml
-# In docker-compose.prod.yml
+# In docker.compose.prod.yml
 deploy:
   resources:
     limits:
@@ -311,7 +311,7 @@ deploy:
 
 #### Network Optimization
 ```yaml
-# Add to docker-compose.yml
+# Add to docker.compose.yml
 networks:
   whisper-network:
     driver: bridge
@@ -324,15 +324,15 @@ networks:
 
 ```bash
 # View all logs
-docker-compose logs
+docker compose logs
 
 # Follow specific service
-docker-compose logs -f frontend
-docker-compose logs -f whisper-backend
+docker compose logs -f frontend
+docker compose logs -f whisper-backend
 
 # Debug container
-docker-compose exec frontend sh
-docker-compose exec whisper-backend sh
+docker compose exec frontend sh
+docker compose exec whisper-backend sh
 
 # Check health status
 curl http://localhost:3000/api/health
@@ -366,8 +366,8 @@ If you're migrating from the local Whisper.cpp setup:
 - Monitor resource usage
 - Regular security updates:
   ```bash
-  docker-compose pull
-  docker-compose up -d
+  docker compose pull
+  docker compose up -d
   ```
 
 ### Data Privacy
