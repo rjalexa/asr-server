@@ -88,9 +88,22 @@ sudo usermod -aG docker $USER
 
 ```
 asr-server/
-├── scripts/                    # Deployment scripts
-│   ├── dev-setup.sh           # Development environment setup
-│   └── prod-deploy.sh         # Production deployment
+├── config/                    # Configuration files
+│   ├── .env.development      # Development environment variables
+│   ├── .env.production       # Production environment variables
+│   └── .env.example          # Example environment template
+├── docker/                    # Docker configurations
+│   ├── .dockerignore         # Docker ignore file
+│   ├── docker.compose.yml    # Base Docker Compose
+│   ├── docker.compose.dev.yml # Development configuration
+│   ├── docker.compose.prod.yml # Production configuration
+│   ├── development/          # Development Docker files
+│   │   └── Dockerfile.dev    # Development Dockerfile
+│   └── production/           # Production Docker files
+│       └── Dockerfile.prod   # Production Dockerfile
+├── scripts/                   # Deployment and management scripts
+│   ├── dev-setup.sh          # Development environment setup
+│   └── prod-deploy.sh        # Production deployment
 ├── pages/                     # Next.js pages and API routes
 │   ├── api/v1/               # Versioned API endpoints
 │   │   ├── asr.js            # Main ASR endpoint
@@ -98,23 +111,22 @@ asr-server/
 │   │   └── transcribe-direct.js # Enhanced transcription
 │   ├── docs.js               # Swagger UI page
 │   └── index.js              # Frontend homepage
-├── docker/                   # Docker configurations
-│   ├── development/          # Development Dockerfile
-│   └── production/           # Production Dockerfile
-├── docker.compose.yml        # Default Docker Compose
-├── docker.compose.dev.yml    # Development configuration
-├── docker.compose.prod.yml   # Production configuration
-├── .env.development          # Development environment variables
-├── .env.production           # Production environment variables
-├── .secrets                  # API keys (create this file)
-└── README.md                 # This file
+├── components/                # React components
+├── lib/                       # Utility libraries
+├── models/                    # Data models
+├── nginx/                     # Nginx configuration
+├── public/                    # Static assets
+├── .secrets                   # API keys (create this file)
+└── README.md                  # This file
 ```
 
 ## 🔧 Configuration
 
 ### Environment Files
 
-#### Development (.env.development)
+Environment configuration files are stored in the `config/` directory:
+
+#### Development (config/.env.development)
 ```bash
 WHISPER_API_URL=http://whisper-backend:9000
 WHISPER_MODEL=base
@@ -122,7 +134,7 @@ WHISPER_DEFAULT_LANGUAGE=en
 SUPPORTED_LANGUAGES=en,it,fr,es,de
 ```
 
-#### Production (.env.production)
+#### Production (config/.env.production)
 ```bash
 WHISPER_API_URL=http://whisper-backend:9000
 WHISPER_MODEL=base
@@ -243,10 +255,10 @@ curl -X POST \
 ./scripts/dev-setup.sh
 
 # View logs
-docker compose -f docker.compose.dev.yml logs -f
+docker compose -f docker/docker.compose.dev.yml logs -f
 
 # Stop services
-docker compose -f docker.compose.dev.yml down
+docker compose -f docker/docker.compose.dev.yml down
 
 # Clean restart
 ./scripts/dev-setup.sh --clean
@@ -261,13 +273,13 @@ docker compose -f docker.compose.dev.yml down
 ./scripts/prod-deploy.sh --update
 
 # View logs
-docker compose -f docker.compose.prod.yml logs -f
+docker compose -f docker/docker.compose.prod.yml logs -f
 
 # Monitor resources
 docker stats
 
 # Stop services
-docker compose -f docker.compose.prod.yml down
+docker compose -f docker/docker.compose.prod.yml down
 ```
 
 ## 🐛 Troubleshooting
@@ -280,7 +292,7 @@ docker compose -f docker.compose.prod.yml down
 docker info
 
 # Check service logs
-docker compose -f docker.compose.dev.yml logs
+docker compose -f docker/docker.compose.dev.yml logs
 
 # Restart Docker (macOS/Windows)
 # Restart Docker Desktop application
@@ -310,7 +322,7 @@ cat .secrets
 # Format: ASR_API_KEY_1=your_key_here
 
 # Restart services after key changes
-docker compose -f docker.compose.dev.yml restart
+docker compose -f docker/docker.compose.dev.yml restart
 ```
 
 #### Whisper Backend Not Ready

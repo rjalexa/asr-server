@@ -93,8 +93,8 @@ cleanup_containers() {
     echo "🧹 Cleaning up existing containers..."
     
     # Stop and remove containers if they exist
-    docker compose -f docker.compose.dev.yml down --remove-orphans 2>/dev/null || true
-    docker compose down --remove-orphans 2>/dev/null || true
+    docker compose -f docker/docker.compose.dev.yml down --remove-orphans 2>/dev/null || true
+    docker compose -f docker/docker.compose.yml down --remove-orphans 2>/dev/null || true
     
     print_status "Cleanup completed"
 }
@@ -106,7 +106,7 @@ start_services() {
     print_info "This may take a few minutes on first run..."
     
     # Use development configuration
-    docker compose -f docker.compose.dev.yml up -d --build
+    docker compose -f docker/docker.compose.dev.yml up -d --build
     
     print_status "Services started"
 }
@@ -128,7 +128,7 @@ wait_for_services() {
         
         if [ $attempt -eq $max_attempts ]; then
             print_warning "Frontend took longer than expected to start"
-            print_info "Check logs with: docker compose -f docker.compose.dev.yml logs frontend"
+            print_info "Check logs with: docker compose -f docker/docker.compose.dev.yml logs frontend"
             break
         fi
         
@@ -140,14 +140,14 @@ wait_for_services() {
     # Wait for whisper backend to be ready
     attempt=1
     while [ $attempt -le $max_attempts ]; do
-        if docker compose -f docker.compose.dev.yml exec whisper-backend curl -s -f "http://localhost:9000/" > /dev/null 2>&1; then
+        if docker compose -f docker/docker.compose.dev.yml exec whisper-backend curl -s -f "http://localhost:9000/" > /dev/null 2>&1; then
             print_status "Whisper backend is ready"
             break
         fi
         
         if [ $attempt -eq $max_attempts ]; then
             print_warning "Whisper backend took longer than expected to start"
-            print_info "Check logs with: docker compose -f docker.compose.dev.yml logs whisper-backend"
+            print_info "Check logs with: docker compose -f docker/docker.compose.dev.yml logs whisper-backend"
             break
         fi
         
@@ -196,7 +196,7 @@ show_status() {
     echo ""
     echo "📊 Service Status:"
     echo "=================="
-    docker compose -f docker.compose.dev.yml ps
+    docker compose -f docker/docker.compose.dev.yml ps
 }
 
 # Show usage information
@@ -222,10 +222,10 @@ show_usage() {
     echo "    'http://localhost:3001/api/v1/asr?language=en&output=json'"
     echo ""
     echo "📝 Useful commands:"
-    echo "  • View logs:              docker compose -f docker.compose.dev.yml logs -f"
-    echo "  • Stop services:          docker compose -f docker.compose.dev.yml down"
-    echo "  • Restart services:       docker compose -f docker.compose.dev.yml restart"
-    echo "  • Rebuild services:       docker compose -f docker.compose.dev.yml up -d --build"
+    echo "  • View logs:              docker compose -f docker/docker.compose.dev.yml logs -f"
+    echo "  • Stop services:          docker compose -f docker/docker.compose.dev.yml down"
+    echo "  • Restart services:       docker compose -f docker/docker.compose.dev.yml restart"
+    echo "  • Rebuild services:       docker compose -f docker/docker.compose.dev.yml up -d --build"
     echo ""
     echo "🐛 Troubleshooting:"
     echo "  • Check logs if services don't respond"
@@ -266,8 +266,8 @@ case "${1:-}" in
         ;;
     --clean)
         echo "🧹 Performing deep cleanup..."
-        docker compose -f docker.compose.dev.yml down --volumes --remove-orphans 2>/dev/null || true
-        docker compose down --volumes --remove-orphans 2>/dev/null || true
+        docker compose -f docker/docker.compose.dev.yml down --volumes --remove-orphans 2>/dev/null || true
+        docker compose -f docker/docker.compose.yml down --volumes --remove-orphans 2>/dev/null || true
         docker system prune -f
         print_status "Deep cleanup completed"
         main

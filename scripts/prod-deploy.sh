@@ -114,9 +114,9 @@ setup_production_config() {
     echo "⚙️  Setting up production configuration..."
     
     # Create production environment file if it doesn't exist
-    if [ ! -f ".env.production" ]; then
-        print_info "Creating .env.production file..."
-        cat > .env.production << 'EOF'
+    if [ ! -f "config/.env.production" ]; then
+        print_info "Creating config/.env.production file..."
+        cat > config/.env.production << 'EOF'
 # Whisper Configuration
 WHISPER_API_URL=http://whisper-backend:9000
 WHISPER_MODEL=base
@@ -133,9 +133,9 @@ ASR_SECRETS_FILE=.secrets
 NODE_ENV=production
 NEXT_PUBLIC_API_BASE_URL=http://localhost:9001
 EOF
-        print_status "Created .env.production file"
+        print_status "Created config/.env.production file"
     else
-        print_status ".env.production file exists"
+        print_status "config/.env.production file exists"
     fi
 }
 
@@ -145,7 +145,7 @@ cleanup_deployment() {
     echo "🧹 Cleaning up existing deployment..."
     
     # Stop and remove existing containers
-    docker compose -f docker.compose.prod.yml down --remove-orphans 2>/dev/null || true
+    docker compose -f docker/docker.compose.prod.yml down --remove-orphans 2>/dev/null || true
     
     # Remove unused images and containers (but keep volumes)
     docker system prune -f
@@ -160,7 +160,7 @@ deploy_services() {
     print_info "This may take several minutes on first deployment..."
     
     # Build and start production services
-    docker compose -f docker.compose.prod.yml up -d --build
+    docker compose -f docker/docker.compose.prod.yml up -d --build
     
     print_status "Services deployed"
 }
@@ -182,7 +182,7 @@ wait_for_services() {
         
         if [ $attempt -eq $max_attempts ]; then
             print_warning "Frontend took longer than expected to start"
-            print_info "Check logs with: docker compose -f docker.compose.prod.yml logs frontend"
+            print_info "Check logs with: docker compose -f docker/docker.compose.prod.yml logs frontend"
             break
         fi
         
@@ -200,14 +200,14 @@ wait_for_services() {
     print_info "Waiting for Whisper backend to initialize (this may take 1-2 minutes)..."
     attempt=1
     while [ $attempt -le $max_attempts ]; do
-        if docker compose -f docker.compose.prod.yml exec -T whisper-backend curl -s -f "http://localhost:9000/" > /dev/null 2>&1; then
+        if docker compose -f docker/docker.compose.prod.yml exec -T whisper-backend curl -s -f "http://localhost:9000/" > /dev/null 2>&1; then
             print_status "Whisper backend is ready"
             break
         fi
         
         if [ $attempt -eq $max_attempts ]; then
             print_warning "Whisper backend took longer than expected to start"
-            print_info "Check logs with: docker compose -f docker.compose.prod.yml logs whisper-backend"
+            print_info "Check logs with: docker compose -f docker/docker.compose.prod.yml logs whisper-backend"
             break
         fi
         
@@ -265,7 +265,7 @@ show_status() {
     echo ""
     echo "📊 Deployment Status:"
     echo "===================="
-    docker compose -f docker.compose.prod.yml ps
+    docker compose -f docker/docker.compose.prod.yml ps
     
     echo ""
     echo "💾 Resource Usage:"
@@ -330,10 +330,10 @@ show_production_usage() {
     echo "    'http://localhost:9001/api/v1/asr?language=en&output=json'"
     echo ""
     echo "📝 Production Management:"
-    echo "  • View logs:              docker compose -f docker.compose.prod.yml logs -f"
-    echo "  • Stop services:          docker compose -f docker.compose.prod.yml down"
-    echo "  • Restart services:       docker compose -f docker.compose.prod.yml restart"
-    echo "  • Update deployment:      docker compose -f docker.compose.prod.yml up -d --build"
+    echo "  • View logs:              docker compose -f docker/docker.compose.prod.yml logs -f"
+    echo "  • Stop services:          docker compose -f docker/docker.compose.prod.yml down"
+    echo "  • Restart services:       docker compose -f docker/docker.compose.prod.yml restart"
+    echo "  • Update deployment:      docker compose -f docker/docker.compose.prod.yml up -d --build"
     echo "  • Monitor resources:      docker stats"
     echo ""
     echo "🔒 Security Recommendations:"
@@ -392,15 +392,15 @@ case "${1:-}" in
         ;;
     --clean)
         echo "🧹 Performing deep cleanup..."
-        docker compose -f docker.compose.prod.yml down --volumes --remove-orphans 2>/dev/null || true
+        docker compose -f docker/docker.compose.prod.yml down --volumes --remove-orphans 2>/dev/null || true
         docker system prune -af
         print_status "Deep cleanup completed"
         main
         ;;
     --update)
         echo "🔄 Updating existing deployment..."
-        docker compose -f docker.compose.prod.yml pull
-        docker compose -f docker.compose.prod.yml up -d --build
+        docker compose -f docker/docker.compose.prod.yml pull
+        docker compose -f docker/docker.compose.prod.yml up -d --build
         print_status "Deployment updated"
         show_status
         ;;
