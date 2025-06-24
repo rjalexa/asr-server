@@ -1,3 +1,45 @@
+/**
+ * @swagger
+ * /api/health:
+ *   get:
+ *     summary: Health Check
+ *     description: Check the health status of the ASR server
+ *     tags:
+ *       - Health
+ *     responses:
+ *       200:
+ *         description: Service is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   description: Health status
+ *                   example: ok
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   description: Current timestamp
+ *                 uptime:
+ *                   type: number
+ *                   description: Server uptime in seconds
+ *                 environment:
+ *                   type: string
+ *                   description: Current environment
+ *                   example: production
+ *                 whisperBackend:
+ *                   type: string
+ *                   description: Whisper backend URL
+ *       405:
+ *         description: Method not allowed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 export default function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' })

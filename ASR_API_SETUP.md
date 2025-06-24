@@ -11,9 +11,16 @@ The ASR server provides two ways to access speech recognition:
 ## Architecture
 
 ```
-Client Request → Nginx (Rate Limiting + API Key Validation) → ASR Service (Port 9001)
-                                                            → Next.js Frontend (Port 3000)
+Client Request → Next.js Frontend (Port 3000) → Protected API Endpoints → ASR Service (Internal Network)
+              ↓
+              API Key Authentication & Rate Limiting
 ```
+
+**Security Model:**
+- ASR backend is only accessible via internal Docker network
+- All external access goes through protected API endpoints
+- API key authentication and rate limiting on all endpoints
+- No direct host access to ASR service
 
 ## Setup Instructions
 
@@ -61,8 +68,8 @@ docker compose -f docker.compose.prod.yml logs -f
 ```
 
 The ASR service will be available on:
-- **Internal**: `http://whisper-backend:9000` (container-to-container)
-- **External**: `http://localhost:9001` (host access)
+- **Internal**: `http://whisper-backend:9000` (container-to-container only)
+- **External**: Access via protected API endpoints only (no direct host access)
 
 ### 4. Nginx Configuration
 
@@ -121,35 +128,69 @@ location /asr/ {
 
 ## API Usage
 
-### Direct ASR Service Access
+### Protected API Endpoints (v1)
 
-Access the Whisper ASR service directly through nginx:
+All API endpoints require authentication with X-API-Key header. The following versioned endpoints are available:
 
+#### 1. ASR (Automatic Speech Recognition) - v1
 ```bash
 # Basic transcription
 curl -X POST \
   -H "X-API-Key: asr_prod_abc123def456ghi789" \
   -F "audio_file=@recording.mp3" \
-  "https://your-domain.com/asr/asr?language=en&output=json"
+  "https://your-domain.com/api/v1/asr?language=en&output=json"
 
-# With specific model and language
+# With specific parameters
 curl -X POST \
   -H "X-API-Key: asr_prod_abc123def456ghi789" \
   -F "audio_file=@recording.wav" \
-  "https://your-domain.com/asr/asr?language=it&model=base&output=json"
+  "https://your-domain.com/api/v1/asr?language=it&model=base&task=transcribe&output=json"
 ```
 
-### Next.js API Endpoint
-
-Use the custom API endpoint with enhanced features:
-
+#### 2. Language Detection - v1
 ```bash
-# Using the direct API endpoint
+# Detect language from audio
+curl -X POST \
+  -H "X-API-Key: asr_prod_abc123def456ghi789" \
+  -F "audio_file=@recording.mp3" \
+  "https://your-domain.com/api/v1/detect-language"
+```
+
+#### 3. Enhanced Transcription - v1
+```bash
+# Using the enhanced API endpoint with additional features
 curl -X POST \
   -H "X-API-Key: asr_prod_abc123def456ghi789" \
   -F "audio=@recording.mp3" \
-  "https://your-domain.com/api/transcribe-direct?language=en&model=base"
+  "https://your-domain.com/api/v1/transcribe-direct?language=en&model=base"
 ```
+
+#### 4. Interactive API Documentation
+```bash
+# Access Swagger UI documentation
+https://your-domain.com/docs
+
+# Get OpenAPI specification
+curl https://your-domain.com/api/docs
+```
+
+### Legacy Endpoints (Deprecated)
+
+The following endpoints are deprecated and will be removed in future versions. Please migrate to v1 endpoints:
+
+- `/api/asr` → `/api/v1/asr`
+- `/api/detect-language` → `/api/v1/detect-language`
+- `/api/transcribe-direct` → `/api/v1/transcribe-direct`
+
+### Security Model
+
+✅ **Enhanced Security**: The ASR backend is now only accessible via the internal Docker network. All external access must go through the protected API endpoints with proper authentication.
+
+**Benefits:**
+- No direct host access to ASR service
+- All requests require API key authentication
+- Rate limiting applied to all endpoints
+- Comprehensive request validation
 
 ### Response Format
 
@@ -347,41 +388,29 @@ client_body_timeout 120s;
 
 ### Testing the Setup
 
-#### 1. Test Direct ASR Access
+#### 1. Test Protected API Endpoints (v1)
 ```bash
-# Test without API key (should fail)
-curl -X POST -F "audio_file=@test.mp3" http://localhost:9001/asr
-
-# Test with API key
+# Test ASR endpoint v1
 curl -X POST \
   -H "X-API-Key: asr_prod_abc123def456ghi789" \
   -F "audio_file=@test.mp3" \
-  "http://localhost:9001/asr?language=en&output=json"
-```
+  "https://your-domain.com/api/v1/asr?language=en&output=json"
 
-#### 2. Test Through Nginx
-```bash
-# Test API key validation
+# Test language detection endpoint v1
 curl -X POST \
-  -H "X-API-Key: invalid-key" \
+  -H "X-API-Key: asr_prod_abc123def456ghi789" \
   -F "audio_file=@test.mp3" \
-  "https://your-domain.com/asr/asr"
+  "https://your-domain.com/api/v1/detect-language"
 
-# Test rate limiting (run 35+ times quickly)
-for i in {1..35}; do
-  curl -X POST \
-    -H "X-API-Key: asr_prod_abc123def456ghi789" \
-    -F "audio_file=@test.mp3" \
-    "https://your-domain.com/asr/asr"
-done
-```
-
-#### 3. Test Next.js API
-```bash
+# Test enhanced transcription endpoint v1
 curl -X POST \
   -H "X-API-Key: asr_prod_abc123def456ghi789" \
   -F "audio=@test.mp3" \
-  "https://your-domain.com/api/transcribe-direct?language=en"
+  "https://your-domain.com/api/v1/transcribe-direct?language=en"
+
+# Test Swagger documentation
+curl https://your-domain.com/docs
+curl https://your-domain.com/api/docs
 ```
 
 ## Production Recommendations
@@ -426,18 +455,47 @@ For issues or questions:
 ```python
 import requests
 
-def transcribe_audio(file_path, api_key, language='en'):
-    url = 'https://your-domain.com/api/transcribe-direct'
-    headers = {'X-API-Key': api_key}
-    files = {'audio': open(file_path, 'rb')}
-    params = {'language': language, 'model': 'base'}
+def transcribe_audio(file_path, api_key, language='en', endpoint='transcribe-direct'):
+    """
+    Transcribe audio using different endpoints
+    endpoint options: 'transcribe-direct', 'asr'
+    """
+    if endpoint == 'asr':
+        url = 'https://your-domain.com/api/asr'
+        files = {'audio_file': open(file_path, 'rb')}
+        params = {'language': language, 'output': 'json'}
+    else:
+        url = 'https://your-domain.com/api/transcribe-direct'
+        files = {'audio': open(file_path, 'rb')}
+        params = {'language': language, 'model': 'base'}
     
+    headers = {'X-API-Key': api_key}
     response = requests.post(url, headers=headers, files=files, params=params)
     return response.json()
 
-# Usage
-result = transcribe_audio('recording.mp3', 'asr_prod_abc123def456ghi789')
+def detect_language(file_path, api_key):
+    """Detect language from audio file"""
+    url = 'https://your-domain.com/api/detect-language'
+    headers = {'X-API-Key': api_key}
+    files = {'audio_file': open(file_path, 'rb')}
+    
+    response = requests.post(url, headers=headers, files=files)
+    return response.json()
+
+# Usage examples
+api_key = 'asr_prod_abc123def456ghi789'
+
+# Enhanced transcription
+result = transcribe_audio('recording.mp3', api_key)
 print(result['data']['transcript'])
+
+# Direct ASR
+result = transcribe_audio('recording.mp3', api_key, endpoint='asr')
+print(result['text'])
+
+# Language detection
+lang_result = detect_language('recording.mp3', api_key)
+print(f"Detected language: {lang_result['detected_language']}")
 ```
 
 ### JavaScript/Node.js

@@ -16,5 +16,5 @@ services:
     tty: true
 
   whisper-backend:
-    ports:
-      - "9000:9000"  # Expose for debugging in development
+    # No ports exposed to host - only accessible via internal network
+    # Use docker logs to debug if needed: docker compose logs whisper-backend

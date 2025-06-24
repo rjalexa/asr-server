@@ -30,14 +30,12 @@ services:
   whisper-backend:
     image: onerahmet/openai-whisper-asr-webservice:latest
     container_name: whisper-backend
-    ports:
-      - "9001:9000"  # Expose ASR service to host
+    # No ports exposed to host - only accessible via internal network
     environment:
       - ASR_MODEL=${WHISPER_MODEL:-base}
       - ASR_ENGINE=openai_whisper
     volumes:
       - whisper-models:/root/.cache/whisper
-      - ./.secrets:/app/.secrets:ro  # Mount secrets file read-only
     networks:
       - whisper-network
     restart: unless-stopped
