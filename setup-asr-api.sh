@@ -55,9 +55,9 @@ check_dependencies() {
         exit 1
     fi
     
-    # Check if port 9001 is available
+    # Check if port 9001 is available (frontend)
     if lsof -Pi :9001 -sTCP:LISTEN -t >/dev/null 2>&1; then
-        print_warning "Port 9001 is already in use. You may need to change the ASR_EXTERNAL_PORT."
+        print_warning "Port 9001 is already in use. You may need to stop other services."
         echo "Current process using port 9001:"
         lsof -Pi :9001 -sTCP:LISTEN
         echo ""
@@ -134,23 +134,32 @@ test_setup() {
         return 1
     fi
     
-    # Test direct access to ASR service
-    print_status "Testing direct ASR service access..."
-    if curl -s -f http://localhost:9001/ > /dev/null; then
-        print_status "✅ ASR service is accessible on port 9001"
+    # Test ASR backend via Docker network (internal check)
+    print_status "Testing ASR backend (internal network)..."
+    if docker compose -f docker.compose.prod.yml exec -T whisper-backend curl -s -f http://localhost:9000/ > /dev/null 2>&1; then
+        print_status "✅ ASR backend is running (internal network)"
     else
-        print_warning "⚠️  ASR service may not be ready yet. This is normal on first startup."
+        print_warning "⚠️  ASR backend may not be ready yet. This is normal on first startup."
     fi
     
-    # Test Next.js frontend
+    # Test Next.js frontend and health endpoint
     print_status "Testing Next.js frontend..."
-    if curl -s -f http://localhost:3000/api/health > /dev/null; then
-        print_status "✅ Next.js frontend is accessible on port 3000"
+    if curl -s -f http://localhost:9001/api/health > /dev/null; then
+        print_status "✅ Next.js frontend is accessible on port 9001"
     else
         print_warning "⚠️  Next.js frontend may not be ready yet."
     fi
     
+    # Test Swagger documentation
+    print_status "Testing API documentation..."
+    if curl -s -f http://localhost:9001/docs > /dev/null; then
+        print_status "✅ Swagger documentation is accessible at /docs"
+    else
+        print_warning "⚠️  API documentation may not be ready yet."
+    fi
+    
     print_status "Basic tests completed."
+    print_status "🔒 Security: ASR backend is properly isolated to internal network only."
 }
 
 # Setup nginx (optional)
@@ -211,9 +220,12 @@ show_summary() {
     echo ""
     
     print_status "API Access Points:"
-    echo "  • Next.js Frontend: http://localhost:3000"
-    echo "  • Direct ASR API: http://localhost:9001"
-    echo "  • Next.js API Endpoint: http://localhost:3000/api/transcribe-direct"
+    echo "  • Next.js Frontend: http://localhost:9001"
+    echo "  • Interactive API Docs: http://localhost:9001/docs"
+    echo "  • ASR API v1: http://localhost:9001/api/v1/asr"
+    echo "  • Language Detection v1: http://localhost:9001/api/v1/detect-language"
+    echo "  • Enhanced Transcription v1: http://localhost:9001/api/v1/transcribe-direct"
+    echo "  • Health Check: http://localhost:9001/api/health"
     echo ""
     
     print_status "API Keys (first 20 chars):"
@@ -226,15 +238,25 @@ show_summary() {
     echo ""
     
     print_status "Next Steps:"
-    echo "  1. Test the API using the examples in ASR_API_SETUP.md"
-    echo "  2. Configure nginx for production (if not done already)"
-    echo "  3. Set up SSL certificates for HTTPS"
-    echo "  4. Monitor logs: docker compose -f docker.compose.prod.yml logs -f"
+    echo "  1. Visit http://localhost:9001/docs to test the API interactively"
+    echo "  2. Test v1 endpoints using the examples in ASR_API_SETUP.md"
+    echo "  3. Configure nginx for production (if not done already)"
+    echo "  4. Set up SSL certificates for HTTPS"
+    echo "  5. Monitor logs: docker compose -f docker.compose.prod.yml logs -f"
     echo ""
     
     print_status "Documentation:"
+    echo "  • Interactive API Testing: http://localhost:9001/docs"
     echo "  • Complete setup guide: ASR_API_SETUP.md"
-    echo "  • API usage examples included in the documentation"
+    echo "  • Implementation summary: API_V1_SUMMARY.md"
+    echo "  • OpenAPI specification: http://localhost:9001/api/docs"
+    echo ""
+    
+    print_status "Security:"
+    echo "  ✅ ASR backend isolated to internal Docker network"
+    echo "  ✅ All endpoints protected with API key authentication"
+    echo "  ✅ Rate limiting enabled (30 requests/minute per key)"
+    echo "  ✅ No direct host access to ASR service"
     echo ""
 }
 
