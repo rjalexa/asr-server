@@ -9,6 +9,7 @@ services:
     volumes:
       - ..:/app
       - /app/node_modules
+      - /home/bob/code/asr-server/.secrets:/app/.secrets
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - WHISPER_API_URL=http://whisper-backend:9000

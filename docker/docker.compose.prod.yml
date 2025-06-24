@@ -17,6 +17,7 @@ services:
     volumes:
       - /app/node_modules
       - /app/.next
+      - /home/bob/code/asr-server/.secrets:/app/.secrets
     depends_on:
       - whisper-backend
     networks:
