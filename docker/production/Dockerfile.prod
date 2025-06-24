@@ -31,9 +31,19 @@ RUN pnpm install --prod
 # Copy built application
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder /app/next.config.mjs ./
+COPY --from=builder /app/package.json ./
 
-# Copy public directory (create empty one if source doesn't exist)
-COPY --from=builder /app/public ./public
+# Copy pages directory (needed for API routes and pages)
+COPY --from=builder --chown=nextjs:nodejs /app/pages ./pages
+
+# Copy lib directory (needed for swagger.js)
+COPY --from=builder --chown=nextjs:nodejs /app/lib ./lib
+
+# Copy public directory (includes swagger-custom.css)
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Copy components directory
+COPY --from=builder --chown=nextjs:nodejs /app/components ./components
 
 # Switch to non-root user
 USER nextjs

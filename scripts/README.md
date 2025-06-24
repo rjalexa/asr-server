@@ -35,6 +35,18 @@ Production deployment script that:
 ./scripts/prod-deploy.sh --help   # Show help
 ```
 
+### test-prod-build.sh
+Test production build script that:
+- Builds the production Docker image
+- Starts the production container
+- Tests the /docs endpoint
+- Provides instructions for checking the documentation page
+
+**Usage:**
+```bash
+./scripts/test-prod-build.sh      # Build and test production image
+```
+
 ## Key Differences
 
 | Feature | Development | Production |
