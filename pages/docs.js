@@ -283,10 +283,7 @@ export default function ApiDocs() {
             supportedSubmitMethods={['get', 'post', 'put', 'delete', 'patch']}
             validatorUrl={null}
             persistAuthorization={true}
-            presets={[
-              SwaggerUI.presets.apis,
-              SwaggerUI.SwaggerUIStandalonePreset
-            ]}
+            // presets removed due to compatibility issue with swagger-ui-react v5.x
             plugins={[
               SwaggerUI.plugins.DownloadUrl
             ]}
