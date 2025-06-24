@@ -3,14 +3,23 @@ services:
     build:
       context: .
       dockerfile: docker/production/Dockerfile.prod
+    container_name: asr-frontend
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
+      - WHISPER_API_URL=${WHISPER_API_URL}
+      - WHISPER_MODEL=${WHISPER_MODEL}
+      - WHISPER_DEFAULT_LANGUAGE=${WHISPER_DEFAULT_LANGUAGE}
+      - SUPPORTED_LANGUAGES=${SUPPORTED_LANGUAGES}
     restart: unless-stopped
     volumes:
       - /app/node_modules
       - /app/.next
+    depends_on:
+      - whisper-backend
+    networks:
+      - whisper-network
     deploy:
       resources:
         limits:
@@ -19,14 +28,35 @@ services:
           memory: 256M
 
   whisper-backend:
+    image: onerahmet/openai-whisper-asr-webservice:latest
+    container_name: whisper-backend
     ports:
       - "9001:9000"  # Expose ASR service to host
+    environment:
+      - ASR_MODEL=${WHISPER_MODEL:-base}
+      - ASR_ENGINE=openai_whisper
     volumes:
+      - whisper-models:/root/.cache/whisper
       - ./.secrets:/app/.secrets:ro  # Mount secrets file read-only
+    networks:
+      - whisper-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     deploy:
       resources:
         limits:
           memory: 2G
         reservations:
           memory: 1G
+
+volumes:
+  whisper-models:
+
+networks:
+  whisper-network:
+    driver: bridge
