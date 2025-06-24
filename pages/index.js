@@ -3,14 +3,14 @@ import Navigation from '../components/Navigation'
 
 export default function Home() {
   const [isRecording, setIsRecording] = useState(false)
-  const [isPaused, setIsPaused] = useState(false)
+  const [audioBlob, setAudioBlob] = useState(null)
   const [transcript, setTranscript] = useState('')
   const [status, setStatus] = useState('Ready to record')
-  const [partialTranscript, setPartialTranscript] = useState('')
+  const [isProcessing, setIsProcessing] = useState(false)
   
   const mediaRecorderRef = useRef(null)
-  const socketRef = useRef(null)
   const streamRef = useRef(null)
+  const audioChunksRef = useRef([])
 
   const startRecording = async () => {
     try {
@@ -18,89 +18,48 @@ export default function Home() {
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           channelCount: 1,
-          sampleRate: 16000,
+          sampleRate: 44100, // Higher quality for MP3
         } 
       })
       streamRef.current = stream
 
-      setStatus('Connecting to server...')
-      // Connect to WebSocket for streaming
-      const ws = new WebSocket('ws://localhost:3001/stream')
-      socketRef.current = ws
+      // Reset state
+      audioChunksRef.current = []
+      setAudioBlob(null)
+      setTranscript('')
 
-      ws.onopen = () => {
-        setStatus('Connected. Starting recording...')
-        setIsRecording(true)
+      // Setup MediaRecorder for MP3 recording
+      let mimeType = 'audio/mpeg'
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/webm;codecs=opus'
+        console.log('MP3 not supported, using WebM')
       }
 
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data)
-        
-        if (data.error) {
-          setStatus('Error: ' + data.error)
-          return
-        }
-        
-        if (data.type === 'reset_complete') {
-          setTranscript('')
-          setPartialTranscript('')
-          setStatus('Reset complete - ready to record')
-          return
-        }
-        
-        if (data.transcript) {
-          // Handle incremental transcription from the improved server
-          if (data.is_final) {
-            // Final transcription - use the full transcript from server
-            setTranscript(data.full_transcript || data.transcript)
-            setPartialTranscript('')
-          } else {
-            // Incremental update - append new text
-            setTranscript(prev => {
-              const newText = data.transcript.trim()
-              if (!newText) return prev
-              
-              // Add proper spacing
-              if (prev && !prev.endsWith(' ') && !prev.endsWith('.') && !prev.endsWith('!') && !prev.endsWith('?')) {
-                return prev + ' ' + newText
-              }
-              return prev + newText
-            })
-            
-            // Show processing status
-            setStatus(`Processing... (chunk ${data.chunk_number || 'N/A'})`)
-          }
-        }
-        
-        if (data.status) {
-          setStatus(data.status)
-        }
-      }
-
-      ws.onerror = (error) => {
-        setStatus('WebSocket error: ' + error.message)
-        stopRecording()
-      }
-
-      ws.onclose = () => {
-        setStatus('Connection closed')
-        stopRecording()
-      }
-
-      // Setup MediaRecorder for audio streaming
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      })
+      const mediaRecorder = new MediaRecorder(stream, { mimeType })
       mediaRecorderRef.current = mediaRecorder
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
-          ws.send(event.data)
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
         }
       }
 
-      // Start recording with 100ms chunks
-      mediaRecorder.start(100)
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType })
+        setAudioBlob(audioBlob)
+        setStatus('Recording complete - starting transcription...')
+        
+        // Stop the microphone stream
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop())
+        }
+
+        // Auto-start transcription
+        await transcribeAudio(audioBlob)
+      }
+
+      mediaRecorder.start()
+      setIsRecording(true)
       setStatus('Recording... Speak now!')
 
     } catch (error) {
@@ -109,97 +68,149 @@ export default function Home() {
     }
   }
 
-  const pauseRecording = () => {
-    setStatus('Pausing recording...')
-    
-    // Stop the MediaRecorder to stop sending new audio data
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop()
-    }
-
-    // Stop the microphone stream
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
-    }
-
-    // Keep WebSocket open briefly to receive any final transcription results
-    // Then close it after a short delay
-    setTimeout(() => {
-      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        socketRef.current.close()
-      }
-    }, 2000) // Wait 2 seconds for any final results
-
-    setIsRecording(false)
-    setIsPaused(true)
-    setStatus('Recording paused - text preserved')
-    // Don't clear partialTranscript here - let any final results come through
-  }
-
   const stopRecording = () => {
-    // This is called by error handlers and WebSocket close events
-    setStatus('Connection stopped')
-    
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop()
     }
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
-    }
-
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.close()
-    }
-
     setIsRecording(false)
-    setIsPaused(false)
   }
 
-  const resumeRecording = () => {
-    setIsPaused(false)
-    startRecording()
+  const transcribeAudio = async (blob = audioBlob) => {
+    if (!blob) return
+
+    setIsProcessing(true)
+    setStatus('Uploading and processing audio...')
+
+    try {
+      const formData = new FormData()
+      formData.append('audio', blob, 'recording.mp3')
+
+      const response = await fetch('/api/transcribe-local', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      if (result.error) {
+        throw new Error(result.error)
+      }
+
+      setTranscript(result.transcript)
+      setStatus('Transcription complete!')
+
+    } catch (error) {
+      setStatus('Error: ' + error.message)
+      console.error('Transcription error:', error)
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
-  const clearTranscript = () => {
+  const clearAll = () => {
+    setAudioBlob(null)
     setTranscript('')
-    setPartialTranscript('')
-    setIsPaused(false)
     setStatus('Ready to record')
+    audioChunksRef.current = []
+  }
+
+  const downloadAudio = () => {
+    if (!audioBlob) return
+    
+    const url = URL.createObjectURL(audioBlob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'recording.mp3'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const downloadText = () => {
+    if (!transcript) return
+    
+    const blob = new Blob([transcript], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'transcript.txt'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   return (
     <div style={{ padding: '2rem', fontFamily: 'system-ui', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>Whisper Streaming Demo</h1>
+      <h1>MP3 Recording & Transcription Demo</h1>
       <Navigation />
       
       <div style={{ marginBottom: '2rem' }}>
         <button
-          onClick={
-            isRecording 
-              ? pauseRecording 
-              : isPaused 
-                ? resumeRecording 
-                : startRecording
-          }
+          onClick={isRecording ? stopRecording : startRecording}
+          disabled={isProcessing}
           style={{
             padding: '1rem 2rem',
             fontSize: '1.2rem',
-            backgroundColor: isRecording ? '#f59e0b' : isPaused ? '#10b981' : '#3b82f6',
+            backgroundColor: isRecording ? '#ef4444' : '#3b82f6',
             color: 'white',
             border: 'none',
             borderRadius: '0.5rem',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s',
+            cursor: isProcessing ? 'not-allowed' : 'pointer',
+            opacity: isProcessing ? 0.5 : 1,
+            transition: 'all 0.2s',
             marginRight: '1rem'
           }}
         >
-          {isRecording ? '⏸ Pause Recording' : isPaused ? '▶ Resume Recording' : '🎤 Start Recording'}
+          {isRecording ? '⏹ Stop Recording' : '🎤 Start Recording'}
+        </button>
+
+        <button
+          onClick={downloadAudio}
+          disabled={!audioBlob}
+          style={{
+            padding: '1rem 2rem',
+            fontSize: '1.2rem',
+            backgroundColor: '#8b5cf6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.5rem',
+            cursor: !audioBlob ? 'not-allowed' : 'pointer',
+            opacity: !audioBlob ? 0.5 : 1,
+            transition: 'all 0.2s',
+            marginRight: '1rem'
+          }}
+        >
+          💾 Download audio
+        </button>
+
+        <button
+          onClick={downloadText}
+          disabled={!transcript}
+          style={{
+            padding: '1rem 2rem',
+            fontSize: '1.2rem',
+            backgroundColor: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.5rem',
+            cursor: !transcript ? 'not-allowed' : 'pointer',
+            opacity: !transcript ? 0.5 : 1,
+            transition: 'all 0.2s',
+            marginRight: '1rem'
+          }}
+        >
+          📄 Download text
         </button>
         
         <button
-          onClick={clearTranscript}
-          disabled={!transcript && !partialTranscript}
+          onClick={clearAll}
+          disabled={isProcessing}
           style={{
             padding: '1rem 2rem',
             fontSize: '1.2rem',
@@ -207,19 +218,20 @@ export default function Home() {
             color: 'white',
             border: 'none',
             borderRadius: '0.5rem',
-            cursor: transcript || partialTranscript ? 'pointer' : 'not-allowed',
-            opacity: transcript || partialTranscript ? 1 : 0.5,
-            transition: 'opacity 0.2s'
+            cursor: isProcessing ? 'not-allowed' : 'pointer',
+            opacity: isProcessing ? 0.5 : 1,
+            transition: 'all 0.2s'
           }}
         >
           Clear
         </button>
       </div>
 
+      {/* Status Display */}
       <div style={{ 
         marginBottom: '1rem',
         padding: '0.5rem 1rem',
-        backgroundColor: isRecording ? '#fef3c7' : isPaused ? '#d1fae5' : '#e5e7eb',
+        backgroundColor: isRecording ? '#fef3c7' : audioBlob ? '#d1fae5' : '#e5e7eb',
         borderRadius: '0.5rem',
         display: 'flex',
         alignItems: 'center',
@@ -229,12 +241,34 @@ export default function Home() {
           width: '8px',
           height: '8px',
           borderRadius: '50%',
-          backgroundColor: isRecording ? '#f59e0b' : isPaused ? '#10b981' : '#6b7280',
+          backgroundColor: isRecording ? '#f59e0b' : audioBlob ? '#10b981' : '#6b7280',
           animation: isRecording ? 'pulse 1.5s infinite' : 'none'
         }} />
         <strong>Status:</strong> {status}
       </div>
 
+      {/* Audio Preview */}
+      {audioBlob && (
+        <div style={{
+          marginBottom: '1rem',
+          padding: '1rem',
+          backgroundColor: '#f0f9ff',
+          borderRadius: '0.5rem',
+          border: '1px solid #0ea5e9'
+        }}>
+          <h4 style={{ margin: '0 0 0.5rem 0', color: '#0c4a6e' }}>Audio Preview</h4>
+          <audio 
+            controls 
+            src={URL.createObjectURL(audioBlob)}
+            style={{ width: '100%' }}
+          />
+          <div style={{ fontSize: '0.875rem', color: '#0369a1', marginTop: '0.5rem' }}>
+            Size: {(audioBlob.size / 1024).toFixed(1)} KB
+          </div>
+        </div>
+      )}
+
+      {/* Transcript Display */}
       <div style={{
         border: '1px solid #e5e7eb',
         borderRadius: '0.5rem',
@@ -244,20 +278,16 @@ export default function Home() {
         position: 'relative'
       }}>
         <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#374151' }}>
-          Transcript will appear under
+          Transcript
         </h3>
         
         <div style={{ 
           whiteSpace: 'pre-wrap', 
           lineHeight: '1.6',
-          color: '#1f2937'
+          color: '#1f2937',
+          minHeight: '200px'
         }}>
-          {transcript}
-          {partialTranscript && (
-            <span style={{ color: '#6b7280', fontStyle: 'italic' }}>
-              {' '}{partialTranscript}
-            </span>
-          )}
+          {transcript || (isProcessing ? 'Processing with local Whisper model...' : 'Transcript will appear here after recording')}
         </div>
         
         {transcript && (
