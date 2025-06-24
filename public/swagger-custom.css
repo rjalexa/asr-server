@@ -1,5 +1,71 @@
 /* Custom Swagger UI Styles */
 
+/* HTTP Method Colors */
+.swagger-ui .opblock.opblock-post {
+  border-color: #49cc90;
+  background: rgba(73, 204, 144, 0.1);
+}
+
+.swagger-ui .opblock.opblock-post .opblock-summary-method {
+  background: #49cc90;
+}
+
+.swagger-ui .opblock.opblock-post .opblock-summary {
+  border-color: #49cc90;
+}
+
+.swagger-ui .opblock.opblock-get {
+  border-color: #61affe;
+  background: rgba(97, 175, 254, 0.1);
+}
+
+.swagger-ui .opblock.opblock-get .opblock-summary-method {
+  background: #61affe;
+}
+
+.swagger-ui .opblock.opblock-get .opblock-summary {
+  border-color: #61affe;
+}
+
+.swagger-ui .opblock.opblock-put {
+  border-color: #fca130;
+  background: rgba(252, 161, 48, 0.1);
+}
+
+.swagger-ui .opblock.opblock-put .opblock-summary-method {
+  background: #fca130;
+}
+
+.swagger-ui .opblock.opblock-put .opblock-summary {
+  border-color: #fca130;
+}
+
+.swagger-ui .opblock.opblock-delete {
+  border-color: #f93e3e;
+  background: rgba(249, 62, 62, 0.1);
+}
+
+.swagger-ui .opblock.opblock-delete .opblock-summary-method {
+  background: #f93e3e;
+}
+
+.swagger-ui .opblock.opblock-delete .opblock-summary {
+  border-color: #f93e3e;
+}
+
+.swagger-ui .opblock.opblock-patch {
+  border-color: #50e3c2;
+  background: rgba(80, 227, 194, 0.1);
+}
+
+.swagger-ui .opblock.opblock-patch .opblock-summary-method {
+  background: #50e3c2;
+}
+
+.swagger-ui .opblock.opblock-patch .opblock-summary {
+  border-color: #50e3c2;
+}
+
 /* Authorize button - NOT authorized (red) */
 .swagger-ui .btn.authorize.locked {
   background-color: #dc3545 !important;
@@ -48,30 +114,70 @@
 .swagger-ui .opblock .arrow {
   transition: transform 0.3s ease !important;
   transform-origin: center !important;
+  display: inline-block !important;
 }
 
 .swagger-ui .opblock.is-open .arrow {
   transform: rotate(90deg) !important;
 }
 
-/* Fix operation body visibility */
+/* Fix operation body visibility - using Swagger UI's native classes */
 .swagger-ui .opblock .opblock-body {
-  display: none;
+  display: none !important;
   overflow: hidden;
 }
 
 .swagger-ui .opblock.is-open .opblock-body {
-  display: block;
+  display: block !important;
 }
 
-/* Ensure tag sections are visible */
+/* Ensure tag sections are visible and expandable */
 .swagger-ui .opblock-tag-section {
   display: block !important;
 }
 
-/* Fix deep linking */
 .swagger-ui .opblock-tag {
   cursor: pointer !important;
+  display: block !important;
+}
+
+/* Tag section expand/collapse */
+.swagger-ui .opblock-tag-section.is-open {
+  display: block !important;
+}
+
+/* Additional fixes for expand/collapse functionality */
+.swagger-ui .opblock {
+  margin: 0 0 15px 0;
+  border: 1px solid #000;
+  border-radius: 4px;
+  box-shadow: 0 0 3px rgba(0,0,0,0.19);
+}
+
+.swagger-ui .opblock .opblock-section-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 20px;
+  background: rgba(255,255,255,0.8);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.swagger-ui .opblock .opblock-section-header h4 {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+  font-family: sans-serif;
+}
+
+/* Ensure proper display of operation details */
+.swagger-ui .opblock.is-open .opblock-body {
+  padding: 15px 20px;
+}
+
+/* Tag group styling */
+.swagger-ui .opblock-tag-section h4 {
+  font-size: 24px !important;
+  margin: 15px 0 !important;
 }
 
 /* Additional button styling */
@@ -101,4 +207,21 @@
 .swagger-ui .modal-ux .btn.cancel:hover {
   background-color: #5a6268 !important;
   border-color: #545b62 !important;
+}
+
+/* Ensure method labels are visible */
+.swagger-ui .opblock .opblock-summary-method {
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 80px;
+  padding: 6px 15px;
+  text-align: center;
+  border-radius: 3px;
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.1);
+}
+
+/* Fix for collapsed sections */
+.swagger-ui .opblock-tag-section.is-open .opblock-tag {
+  display: block;
 }

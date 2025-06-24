@@ -19,9 +19,16 @@ export default function ApiDocs() {
       <div style={{ background: '#fafafa', padding: 20, minHeight: '100vh' }}>
         <SwaggerUI
           url="/api/docs"
-          docExpansion="full"
-          deepLinking
-          tryItOutEnabled
+          docExpansion="list"
+          deepLinking={true}
+          tryItOutEnabled={true}
+          displayOperationId={false}
+          defaultModelsExpandDepth={1}
+          defaultModelExpandDepth={1}
+          displayRequestDuration={true}
+          filter={true}
+          showExtensions={true}
+          showCommonExtensions={true}
           supportedSubmitMethods={['get', 'post', 'put', 'delete', 'patch']}
           requestInterceptor={req => {
             // ensure API calls are relative to this host
@@ -29,6 +36,10 @@ export default function ApiDocs() {
               req.url = window.location.origin + req.url
             }
             return req
+          }}
+          onComplete={() => {
+            // Ensure expand/collapse functionality works
+            console.log('Swagger UI loaded successfully')
           }}
         />
       </div>
