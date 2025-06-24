@@ -1,24 +1,50 @@
-# ASR Server - Automatic Speech Recognition API
+# ASR Server - Comprehensive Documentation
 
 A production-ready ASR (Automatic Speech Recognition) server built with Next.js and OpenAI Whisper, featuring API key authentication, rate limiting, and comprehensive Swagger documentation.
 
-## 🏗️ Architecture
+## Table of Contents
+
+1. [Architecture Overview](#architecture-overview)
+2. [Quick Start Guide](#quick-start-guide)
+3. [Project Structure](#project-structure)
+4. [Configuration](#configuration)
+5. [API Reference](#api-reference)
+6. [Development Guide](#development-guide)
+7. [Production Deployment](#production-deployment)
+8. [Security Features](#security-features)
+9. [Testing](#testing)
+10. [Troubleshooting](#troubleshooting)
+11. [Project History](#project-history)
+12. [Contributing](#contributing)
+
+## Architecture Overview
+
+### System Architecture
 
 ```
-External Request → Frontend Container → Whisper Backend (Internal Network)
-                      ↓
-                 API Key Auth & Rate Limiting
-                      ↓
-                 whisper-backend:9000
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   External      │    │   Frontend      │    │   Whisper       │
+│   Request       │───▶│   Container     │───▶│   Backend       │
+│                 │    │   (Port 3001/   │    │   (Internal     │
+│                 │    │    9001)        │    │    Network)     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                              │
+                              ▼
+                       ┌─────────────────┐
+                       │   API Key Auth  │
+                       │   Rate Limiting │
+                       │   Validation    │
+                       └─────────────────┘
 ```
 
 ### Security Model
+
 - ✅ Whisper backend only accessible via internal Docker network
 - ✅ All external access through protected API endpoints
 - ✅ API key authentication and rate limiting
 - ✅ Request validation and comprehensive error handling
 
-## 🚀 Quick Start
+## Quick Start Guide
 
 ### Prerequisites
 
@@ -84,14 +110,17 @@ sudo usermod -aG docker $USER
    - Frontend: http://localhost:9001
    - Swagger UI: http://localhost:9001/docs
 
-## 📁 Project Structure
+## Project Structure
+
+### Current Organization
 
 ```
 asr-server/
 ├── config/                    # Configuration files
 │   ├── .env.development      # Development environment variables
 │   ├── .env.production       # Production environment variables
-│   └── .env.example          # Example environment template
+│   ├── .env.example          # Example environment template
+│   └── README.md             # Configuration documentation
 ├── docker/                    # Docker configurations
 │   ├── .dockerignore         # Docker ignore file
 │   ├── docker.compose.yml    # Base Docker Compose
@@ -99,11 +128,13 @@ asr-server/
 │   ├── docker.compose.prod.yml # Production configuration
 │   ├── development/          # Development Docker files
 │   │   └── Dockerfile.dev    # Development Dockerfile
-│   └── production/           # Production Docker files
-│       └── Dockerfile.prod   # Production Dockerfile
+│   ├── production/           # Production Docker files
+│   │   └── Dockerfile.prod   # Production Dockerfile
+│   └── README.md             # Docker documentation
 ├── scripts/                   # Deployment and management scripts
 │   ├── dev-setup.sh          # Development environment setup
-│   └── prod-deploy.sh        # Production deployment
+│   ├── prod-deploy.sh        # Production deployment
+│   └── README.md             # Scripts documentation
 ├── pages/                     # Next.js pages and API routes
 │   ├── api/v1/               # Versioned API endpoints
 │   │   ├── asr.js            # Main ASR endpoint
@@ -117,10 +148,20 @@ asr-server/
 ├── nginx/                     # Nginx configuration
 ├── public/                    # Static assets
 ├── .secrets                   # API keys (create this file)
-└── README.md                  # This file
+├── package.json              # Node.js dependencies
+├── next.config.mjs           # Next.js configuration
+└── README.md                  # Main documentation
 ```
 
-## 🔧 Configuration
+### Benefits of Current Structure
+
+1. **Better Organization**: Clear separation between Docker configs, environment configs, and scripts
+2. **No Duplication**: All files are in their appropriate directories with no duplicates
+3. **Easier Navigation**: Developers can quickly find what they need
+4. **Maintainability**: Related files are grouped together
+5. **Documentation**: Each major directory has its own README
+
+## Configuration
 
 ### Environment Files
 
@@ -146,6 +187,7 @@ NODE_ENV=production
 ```
 
 ### API Keys (.secrets)
+
 Create a `.secrets` file with your API keys:
 ```bash
 ASR_API_KEY_1=asr_prod_your_secure_key_here
@@ -161,9 +203,9 @@ ASR_API_KEY_3=asr_dev_development_key_here
 | Production  | 9001          | Internal only  | Production deployment |
 | Default     | 3000          | Internal only  | Testing/fallback |
 
-## 📡 API Endpoints
+## API Reference
 
-### v1 API (Recommended)
+### v1 API Endpoints (Recommended)
 
 #### ASR - Automatic Speech Recognition
 ```bash
@@ -199,32 +241,89 @@ POST /api/v1/transcribe-direct
 - `GET /api/docs` - OpenAPI specification
 - `GET /api/health` - Health check
 
-## 🧪 Testing
+## Development Guide
 
-### Using curl
+### Local Development
+
 ```bash
-# Get your API key
-API_KEY=$(grep "ASR_API_KEY_1" .secrets | cut -d'=' -f2)
+# Start development environment
+./scripts/dev-setup.sh
 
-# Test ASR endpoint
-curl -X POST \
-  -H "X-API-Key: $API_KEY" \
-  -F "audio_file=@your-audio.mp3" \
-  "http://localhost:3001/api/v1/asr?language=en&output=json"
+# View logs
+docker compose -f docker/docker.compose.dev.yml logs -f
 
-# Test language detection
-curl -X POST \
-  -H "X-API-Key: $API_KEY" \
-  -F "audio_file=@your-audio.mp3" \
-  "http://localhost:3001/api/v1/detect-language"
+# Stop services
+docker compose -f docker/docker.compose.dev.yml down
+
+# Clean restart
+./scripts/dev-setup.sh --clean
 ```
 
-### Using Swagger UI
-1. Open http://localhost:3001/docs (dev) or http://localhost:9001/docs (prod)
-2. Click "Authorize" and enter your API key
-3. Test endpoints with audio files directly in the browser
+### Alternative npm Scripts
 
-## 🔒 Security Features
+```bash
+# Development
+npm run setup:dev
+npm run docker:dev        # Start dev environment
+npm run docker:logs:dev   # View dev logs
+
+# Production
+npm run setup:prod
+npm run docker:prod       # Start prod environment
+npm run docker:logs:prod  # View prod logs
+```
+
+### Development Workflow
+
+1. Make changes to code
+2. Services auto-reload (Next.js hot reload)
+3. Test using Swagger UI or curl commands
+4. Check logs for any issues
+5. Commit changes
+
+## Production Deployment
+
+### Deployment Steps
+
+```bash
+# Deploy to production
+./scripts/prod-deploy.sh
+
+# Update deployment
+./scripts/prod-deploy.sh --update
+
+# View logs
+docker compose -f docker/docker.compose.prod.yml logs -f
+
+# Monitor resources
+docker stats
+
+# Stop services
+docker compose -f docker/docker.compose.prod.yml down
+```
+
+### Production Hardening
+
+- ✅ Non-root user in containers
+- ✅ Resource limits configured
+- ✅ Health checks implemented
+- ✅ Log rotation setup
+- ✅ Security headers configured
+
+### Backup and Recovery
+
+```bash
+# Backup API keys
+cp .secrets .secrets.backup
+
+# Backup Docker volumes
+docker run --rm -v whisper-models:/data -v $(pwd):/backup alpine tar czf /backup/whisper-models.tar.gz -C /data .
+
+# Restore Docker volumes
+docker run --rm -v whisper-models:/data -v $(pwd):/backup alpine tar xzf /backup/whisper-models.tar.gz -C /data
+```
+
+## Security Features
 
 ### API Key Authentication
 - All endpoints require valid API key in `X-API-Key` header
@@ -247,42 +346,49 @@ curl -X POST \
 - No direct host access to ASR service
 - All external access through protected frontend
 
-## 🛠️ Development
+## Testing
 
-### Local Development
+### Using curl
+
 ```bash
-# Start development environment
-./scripts/dev-setup.sh
+# Get your API key
+API_KEY=$(grep "ASR_API_KEY_1" .secrets | cut -d'=' -f2)
 
-# View logs
-docker compose -f docker/docker.compose.dev.yml logs -f
+# Test ASR endpoint
+curl -X POST \
+  -H "X-API-Key: $API_KEY" \
+  -F "audio_file=@your-audio.mp3" \
+  "http://localhost:3001/api/v1/asr?language=en&output=json"
 
-# Stop services
-docker compose -f docker/docker.compose.dev.yml down
+# Test language detection
+curl -X POST \
+  -H "X-API-Key: $API_KEY" \
+  -F "audio_file=@your-audio.mp3" \
+  "http://localhost:3001/api/v1/detect-language"
 
-# Clean restart
-./scripts/dev-setup.sh --clean
+# Test enhanced transcription
+curl -X POST \
+  -H "X-API-Key: $API_KEY" \
+  -F "audio=@your-audio.mp3" \
+  "http://localhost:3001/api/v1/transcribe-direct?language=en"
 ```
 
-### Production Management
-```bash
-# Deploy to production
-./scripts/prod-deploy.sh
+### Using Swagger UI
 
-# Update deployment
-./scripts/prod-deploy.sh --update
+1. Open http://localhost:3001/docs (dev) or http://localhost:9001/docs (prod)
+2. Click "Authorize" and enter your API key
+3. Test endpoints with audio files directly in the browser
 
-# View logs
-docker compose -f docker/docker.compose.prod.yml logs -f
+### Test Scripts
 
-# Monitor resources
-docker stats
+Both setup scripts include comprehensive testing:
+- ✅ Prerequisites check
+- ✅ Service health verification
+- ✅ API endpoint testing
+- ✅ Swagger UI accessibility
+- ✅ Authentication validation
 
-# Stop services
-docker compose -f docker/docker.compose.prod.yml down
-```
-
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -359,7 +465,56 @@ docker system df
 docker system prune
 ```
 
-## 🔄 Updates and Maintenance
+## Project History
+
+### Recent Reorganization
+
+The project underwent a major reorganization to improve structure and eliminate duplication:
+
+#### Before Reorganization
+- Docker compose files were in the root directory
+- Environment files were scattered
+- Multiple documentation files with overlapping content
+- Legacy scripts and binaries
+
+#### After Reorganization
+- All Docker files consolidated in `docker/` directory
+- Environment files organized in `config/` directory
+- Scripts organized in `scripts/` directory
+- Single comprehensive documentation
+- Clean, maintainable structure
+
+### Removed Legacy Files
+- `test-docker-setup.sh` → Replaced with `scripts/dev-setup.sh`
+- `setup-asr-api.sh` → Functionality moved to scripts
+- `setup-whisper.sh` → No longer needed
+- `migrate-to-docker.sh` → No longer needed
+- `DOCKER_SETUP_FIXED.md` → Merged into documentation
+- `API_V1_SUMMARY.md` → Merged into documentation
+- `ASR_API_SETUP.md` → Merged into documentation
+- `whisper` binary → Using Docker only
+
+### Fixed Issues
+1. **Docker Network Configuration**: All environments now use proper internal networking
+2. **Port Configuration**: Clear separation between development and production ports
+3. **API Endpoints**: All v1 endpoints fixed with proper error handling
+4. **Environment Variables**: Consistent across all configurations
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test with both development and production scripts
+5. Submit a pull request
+
+### Development Guidelines
+- Follow existing code style
+- Add tests for new features
+- Update documentation as needed
+- Test in both development and production environments
+
+## Updates and Maintenance
 
 ### Updating the Application
 ```bash
@@ -373,49 +528,30 @@ git pull origin main
 ./scripts/prod-deploy.sh --update
 ```
 
-### Backup and Recovery
-```bash
-# Backup API keys
-cp .secrets .secrets.backup
+### Monitoring and Logging
 
-# Backup Docker volumes
-docker run --rm -v whisper-models:/data -v $(pwd):/backup alpine tar czf /backup/whisper-models.tar.gz -C /data .
-
-# Restore Docker volumes
-docker run --rm -v whisper-models:/data -v $(pwd):/backup alpine tar xzf /backup/whisper-models.tar.gz -C /data
-```
-
-## 📊 Monitoring and Logging
-
-### Log Management
+#### Log Management
 - Logs are automatically rotated in production
 - View real-time logs: `docker compose logs -f`
 - Log files location: `/var/lib/docker/containers/`
 
-### Health Monitoring
+#### Health Monitoring
 - Health endpoint: `/api/health`
 - Service status: `docker compose ps`
 - Resource usage: `docker stats`
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test with both development and production scripts
-5. Submit a pull request
-
-## 📄 License
-
-[Add your license information here]
-
-## 🆘 Support
+## Support
 
 For issues and questions:
 1. Check the troubleshooting section above
 2. Review Docker and application logs
 3. Verify API key configuration
 4. Test with provided curl commands
+5. Check GitHub issues for similar problems
+
+## License
+
+[Add your license information here]
 
 ---
 
