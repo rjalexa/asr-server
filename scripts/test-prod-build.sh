@@ -5,10 +5,10 @@ set -e
 
 echo "🔨 Building production Docker image..."
 cd docker
-docker-compose -f docker.compose.yml -f docker.compose.prod.yml build asr-server
+docker compose -f docker.compose.yml -f docker.compose.prod.yml build frontend
 
 echo "🚀 Starting production container..."
-docker-compose -f docker.compose.yml -f docker.compose.prod.yml up -d asr-server
+docker compose -f docker.compose.yml -f docker.compose.prod.yml up -d frontend
 
 echo "⏳ Waiting for server to be ready..."
 sleep 5
@@ -21,4 +21,4 @@ echo "✅ Production build complete!"
 echo "📝 Visit http://localhost:3000/docs to check the documentation page"
 echo ""
 echo "To stop the container, run:"
-echo "cd docker && docker-compose -f docker.compose.yml -f docker.compose.prod.yml down"
+echo "cd docker && docker compose -f docker.compose.yml -f docker.compose.prod.yml down"
