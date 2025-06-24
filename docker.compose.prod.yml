@@ -8,10 +8,10 @@ services:
       - "9001:3000"
     environment:
       - NODE_ENV=production
-      - WHISPER_API_URL=${WHISPER_API_URL}
-      - WHISPER_MODEL=${WHISPER_MODEL}
-      - WHISPER_DEFAULT_LANGUAGE=${WHISPER_DEFAULT_LANGUAGE}
-      - SUPPORTED_LANGUAGES=${SUPPORTED_LANGUAGES}
+      - WHISPER_API_URL=http://whisper-backend:9000
+      - WHISPER_MODEL=${WHISPER_MODEL:-base}
+      - WHISPER_DEFAULT_LANGUAGE=${WHISPER_DEFAULT_LANGUAGE:-en}
+      - SUPPORTED_LANGUAGES=${SUPPORTED_LANGUAGES:-en,it,fr,es,de}
     restart: unless-stopped
     volumes:
       - /app/node_modules

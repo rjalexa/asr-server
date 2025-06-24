@@ -3,18 +3,43 @@ services:
     build:
       context: .
       dockerfile: docker/development/Dockerfile.dev
+    container_name: asr-frontend-dev
     ports:
-      - "9001:3000"
+      - "3001:3000"
     volumes:
       - .:/app
       - /app/node_modules
-      - /app/.next
     environment:
       - NODE_ENV=development
-      - CHOKIDAR_USEPOLLING=true
-    stdin_open: true
-    tty: true
+      - WHISPER_API_URL=http://whisper-backend:9000
+      - WHISPER_MODEL=base
+      - WHISPER_DEFAULT_LANGUAGE=en
+      - SUPPORTED_LANGUAGES=en,it,fr,es,de
+    depends_on:
+      - whisper-backend
+    networks:
+      - whisper-network
 
   whisper-backend:
-    # No ports exposed to host - only accessible via internal network
-    # Use docker logs to debug if needed: docker compose logs whisper-backend
+    image: onerahmet/openai-whisper-asr-webservice:latest
+    container_name: whisper-backend-dev
+    environment:
+      - ASR_MODEL=base
+      - ASR_ENGINE=openai_whisper
+    volumes:
+      - whisper-models-dev:/root/.cache/whisper
+    networks:
+      - whisper-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  whisper-models-dev:
+
+networks:
+  whisper-network:
+    driver: bridge
