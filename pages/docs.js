@@ -19,7 +19,7 @@ export default function ApiDocs() {
       <div style={{ background: '#fafafa', padding: 20, minHeight: '100vh' }}>
         <SwaggerUI
           url="/api/docs"
-          docExpansion="none"
+          docExpansion="list"
           deepLinking={true}
           tryItOutEnabled={true}
           displayOperationId={false}

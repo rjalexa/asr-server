@@ -11,7 +11,7 @@ import path from 'path'
  *     summary: Enhanced Audio Transcription
  *     description: Transcribe audio files with enhanced features and detailed metadata
  *     tags:
- *       - Enhanced API
+ *       - ASR
  *     security:
  *       - ApiKeyAuth: []
  *     parameters:
