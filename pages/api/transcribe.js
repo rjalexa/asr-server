@@ -99,8 +99,8 @@ function loadSecrets() {
 function getGeminiApiKey() {
   const secrets = loadSecrets()
   
-  // Try to get from secrets file first
-  const geminiKey = secrets.GEMINI_API_KEY || secrets.GOOGLE_API_KEY
+  // Try to get from secrets file first (support multiple key names)
+  const geminiKey = secrets.GEMINI_API_KEY || secrets.GOOGLE_API_KEY || secrets.GOOGLE_GEMINI_API
   if (geminiKey) {
     return geminiKey
   }

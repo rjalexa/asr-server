@@ -5,15 +5,18 @@ export default function Home() {
   const [isRecording, setIsRecording] = useState(false)
   const [audioBlob, setAudioBlob] = useState(null)
   const [transcript, setTranscript] = useState('')
-  const [status, setStatus] = useState('Ready to record')
+  const [status, setStatus] = useState('Ready to record or upload audio')
   const [isProcessing, setIsProcessing] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState('whisper')
   const [selectedModel, setSelectedModel] = useState('base')
   const [selectedLanguage, setSelectedLanguage] = useState('en')
+  const [uploadedFile, setUploadedFile] = useState(null)
+  const [audioSource, setAudioSource] = useState(null) // 'recorded' or 'uploaded'
   
   const mediaRecorderRef = useRef(null)
   const streamRef = useRef(null)
   const audioChunksRef = useRef([])
+  const fileInputRef = useRef(null)
 
   const startRecording = async () => {
     try {
@@ -50,6 +53,7 @@ export default function Home() {
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType })
         setAudioBlob(audioBlob)
+        setAudioSource('recorded')
         setStatus('Recording complete - starting transcription...')
         
         // Stop the microphone stream
@@ -131,11 +135,43 @@ export default function Home() {
     }
   }
 
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+
+    // Check if it's an audio file
+    if (!file.type.startsWith('audio/')) {
+      setStatus('Error: Please select an audio file')
+      return
+    }
+
+    // Check file size (10MB limit to match API)
+    if (file.size > 10 * 1024 * 1024) {
+      setStatus('Error: File size must be less than 10MB')
+      return
+    }
+
+    setUploadedFile(file)
+    setAudioBlob(file)
+    setAudioSource('uploaded')
+    setTranscript('')
+    setStatus(`Audio file loaded: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
+  }
+
+  const triggerFileUpload = () => {
+    fileInputRef.current?.click()
+  }
+
   const clearAll = () => {
     setAudioBlob(null)
+    setUploadedFile(null)
     setTranscript('')
-    setStatus('Ready to record')
+    setStatus('Ready to record or upload audio')
+    setAudioSource(null)
     audioChunksRef.current = []
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   const downloadAudio = () => {
@@ -289,23 +325,74 @@ export default function Home() {
         </button>
 
         <button
-          onClick={downloadAudio}
-          disabled={!audioBlob}
+          onClick={triggerFileUpload}
+          disabled={isRecording || isProcessing}
           style={{
             padding: '1rem 2rem',
             fontSize: '1.2rem',
-            backgroundColor: '#8b5cf6',
+            backgroundColor: '#f59e0b',
             color: 'white',
             border: 'none',
             borderRadius: '0.5rem',
-            cursor: !audioBlob ? 'not-allowed' : 'pointer',
-            opacity: !audioBlob ? 0.5 : 1,
+            cursor: (isRecording || isProcessing) ? 'not-allowed' : 'pointer',
+            opacity: (isRecording || isProcessing) ? 0.5 : 1,
             transition: 'all 0.2s',
             marginRight: '1rem'
           }}
         >
-          💾 Download audio
+          📁 Upload Audio
         </button>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="audio/*"
+          onChange={handleFileUpload}
+          style={{ display: 'none' }}
+        />
+
+        {audioBlob && (
+          <button
+            onClick={() => transcribeAudio()}
+            disabled={isProcessing}
+            style={{
+              padding: '1rem 2rem',
+              fontSize: '1.2rem',
+              backgroundColor: '#059669',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.5rem',
+              cursor: isProcessing ? 'not-allowed' : 'pointer',
+              opacity: isProcessing ? 0.5 : 1,
+              transition: 'all 0.2s',
+              marginRight: '1rem'
+            }}
+          >
+            🎯 Transcribe
+          </button>
+        )}
+
+        {audioBlob && audioSource === 'recorded' && (
+          <button
+            onClick={downloadAudio}
+            disabled={!audioBlob}
+            style={{
+              padding: '1rem 2rem',
+              fontSize: '1.2rem',
+              backgroundColor: '#8b5cf6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.5rem',
+              cursor: !audioBlob ? 'not-allowed' : 'pointer',
+              opacity: !audioBlob ? 0.5 : 1,
+              transition: 'all 0.2s',
+              marginRight: '1rem'
+            }}
+          >
+            💾 Download audio
+          </button>
+        )}
 
         <button
           onClick={downloadText}
@@ -407,7 +494,7 @@ export default function Home() {
         }}>
           {transcript || (isProcessing ? 
             `Processing with ${selectedProvider === 'gemini' ? 'Gemini AI' : 'Docker Whisper'} (${selectedModel} model)...` : 
-            'Transcript will appear here after recording')}
+            'Transcript will appear here after recording or uploading audio')}
         </div>
         
         {transcript && (
