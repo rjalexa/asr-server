@@ -51,7 +51,7 @@ function validateLanguage(language) {
 // Validate model based on provider
 function validateModel(model, provider = 'whisper') {
   if (provider === 'gemini') {
-    const supportedGeminiModels = ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-2.5-flash']
+    const supportedGeminiModels = ['gemini-2.5-flash', 'gemini-2.5-pro']
     return supportedGeminiModels.includes(model)
   }
   const supportedWhisperModels = ['tiny', 'base', 'small', 'medium', 'large']
@@ -110,7 +110,7 @@ function getGeminiApiKey() {
 }
 
 // Transcribe using Gemini API
-async function transcribeWithGemini(audioBuffer, filename, model = 'gemini-2.0-flash') {
+async function transcribeWithGemini(audioBuffer, filename, model = 'gemini-2.5-flash') {
   const geminiApiKey = getGeminiApiKey()
   
   if (!geminiApiKey) {
@@ -240,7 +240,7 @@ export default async function handler(req, res) {
 
     // Get parameters from query or use defaults
     const provider = req.query.provider || 'whisper'
-    const model = req.query.model || (provider === 'gemini' ? 'gemini-2.0-flash' : process.env.WHISPER_MODEL || 'base')
+    const model = req.query.model || (provider === 'gemini' ? 'gemini-2.5-flash' : process.env.WHISPER_MODEL || 'base')
     const language = req.query.language || process.env.WHISPER_DEFAULT_LANGUAGE || 'en'
 
     // Validate provider
@@ -255,7 +255,7 @@ export default async function handler(req, res) {
     // Validate model for the selected provider
     if (!validateModel(model, provider)) {
       const supportedModels = provider === 'gemini' 
-        ? ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-2.5-flash']
+        ? ['gemini-2.5-flash', 'gemini-2.5-pro']
         : ['tiny', 'base', 'small', 'medium', 'large']
       
       return res.status(400).json({ 
