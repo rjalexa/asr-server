@@ -12,6 +12,7 @@ export default function Home() {
   const [selectedLanguage, setSelectedLanguage] = useState('en')
   const [uploadedFile, setUploadedFile] = useState(null)
   const [audioSource, setAudioSource] = useState(null) // 'recorded' or 'uploaded'
+  const [transcriptionTime, setTranscriptionTime] = useState(null) // elapsed time in seconds
   
   const mediaRecorderRef = useRef(null)
   const streamRef = useRef(null)
@@ -33,6 +34,7 @@ export default function Home() {
       audioChunksRef.current = []
       setAudioBlob(null)
       setTranscript('')
+      setTranscriptionTime(null)
 
       // Setup MediaRecorder for MP3 recording
       let mimeType = 'audio/mpeg'
@@ -86,6 +88,7 @@ export default function Home() {
     if (!blob) return
 
     setIsProcessing(true)
+    const startTime = Date.now()
     const providerName = selectedProvider === 'gemini' ? 'Gemini AI' : 'Docker Whisper'
     const languageText = selectedProvider === 'gemini' ? 'auto-detect' : selectedLanguage
     setStatus(`Processing with ${providerName} (${selectedModel}, ${languageText})...`)
@@ -123,6 +126,10 @@ export default function Home() {
         throw new Error(result.error)
       }
 
+      const endTime = Date.now()
+      const elapsedSeconds = (endTime - startTime) / 1000
+      setTranscriptionTime(elapsedSeconds)
+
       setTranscript(result.transcript)
       const providerDisplay = result.provider === 'gemini' ? 'Gemini AI' : 'Whisper'
       setStatus(`Transcription complete! (${providerDisplay}: ${result.model}, Lang: ${result.language})`)
@@ -155,6 +162,7 @@ export default function Home() {
     setAudioBlob(file)
     setAudioSource('uploaded')
     setTranscript('')
+    setTranscriptionTime(null)
     setStatus(`Audio file loaded: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
   }
 
@@ -166,6 +174,7 @@ export default function Home() {
     setAudioBlob(null)
     setUploadedFile(null)
     setTranscript('')
+    setTranscriptionTime(null)
     setStatus('Ready to record or upload audio')
     setAudioSource(null)
     audioChunksRef.current = []
@@ -303,7 +312,28 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Status Display */}
+      <div style={{ 
+        marginBottom: '2rem',
+        padding: '0.5rem 1rem',
+        backgroundColor: isRecording ? '#fef3c7' : audioBlob ? '#d1fae5' : '#e5e7eb',
+        borderRadius: '0.5rem',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem'
+      }}>
+        <div style={{
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          backgroundColor: isRecording ? '#f59e0b' : audioBlob ? '#10b981' : '#6b7280',
+          animation: isRecording ? 'pulse 1.5s infinite' : 'none'
+        }} />
+        <strong>Status:</strong> {status}
+      </div>
       
+      {/* Initial Action Buttons */}
       <div style={{ marginBottom: '2rem' }}>
         <button
           onClick={isRecording ? stopRecording : startRecording}
@@ -352,67 +382,6 @@ export default function Home() {
           style={{ display: 'none' }}
         />
 
-        {audioBlob && (
-          <button
-            onClick={() => transcribeAudio()}
-            disabled={isProcessing}
-            style={{
-              padding: '1rem 2rem',
-              fontSize: '1.2rem',
-              backgroundColor: '#059669',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.5rem',
-              cursor: isProcessing ? 'not-allowed' : 'pointer',
-              opacity: isProcessing ? 0.5 : 1,
-              transition: 'all 0.2s',
-              marginRight: '1rem'
-            }}
-          >
-            🎯 Transcribe
-          </button>
-        )}
-
-        {audioBlob && audioSource === 'recorded' && (
-          <button
-            onClick={downloadAudio}
-            disabled={!audioBlob}
-            style={{
-              padding: '1rem 2rem',
-              fontSize: '1.2rem',
-              backgroundColor: '#8b5cf6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.5rem',
-              cursor: !audioBlob ? 'not-allowed' : 'pointer',
-              opacity: !audioBlob ? 0.5 : 1,
-              transition: 'all 0.2s',
-              marginRight: '1rem'
-            }}
-          >
-            💾 Download audio
-          </button>
-        )}
-
-        <button
-          onClick={downloadText}
-          disabled={!transcript}
-          style={{
-            padding: '1rem 2rem',
-            fontSize: '1.2rem',
-            backgroundColor: '#10b981',
-            color: 'white',
-            border: 'none',
-            borderRadius: '0.5rem',
-            cursor: !transcript ? 'not-allowed' : 'pointer',
-            opacity: !transcript ? 0.5 : 1,
-            transition: 'all 0.2s',
-            marginRight: '1rem'
-          }}
-        >
-          📄 Download text
-        </button>
-        
         <button
           onClick={clearAll}
           disabled={isProcessing}
@@ -432,30 +401,43 @@ export default function Home() {
         </button>
       </div>
 
-      {/* Status Display */}
-      <div style={{ 
-        marginBottom: '1rem',
-        padding: '0.5rem 1rem',
-        backgroundColor: isRecording ? '#fef3c7' : audioBlob ? '#d1fae5' : '#e5e7eb',
-        borderRadius: '0.5rem',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.5rem'
-      }}>
-        <div style={{
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          backgroundColor: isRecording ? '#f59e0b' : audioBlob ? '#10b981' : '#6b7280',
-          animation: isRecording ? 'pulse 1.5s infinite' : 'none'
-        }} />
-        <strong>Status:</strong> {status}
-      </div>
+      {/* Transcribe Button - Shown after audio is loaded */}
+      {audioBlob && (
+        <div style={{ marginBottom: '2rem' }}>
+          <button
+            onClick={() => transcribeAudio()}
+            disabled={isProcessing}
+            style={{
+              padding: '1rem 2rem',
+              fontSize: '1.2rem',
+              backgroundColor: transcript ? '#0ea5e9' : '#059669',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.5rem',
+              cursor: isProcessing ? 'not-allowed' : 'pointer',
+              opacity: isProcessing ? 0.5 : 1,
+              transition: 'all 0.2s'
+            }}
+          >
+            {transcript ? '🔄 Re-transcribe' : '🎯 Transcribe'}
+          </button>
+          {transcript && (
+            <p style={{ 
+              fontSize: '0.875rem', 
+              color: '#6b7280', 
+              marginTop: '0.5rem',
+              marginBottom: 0
+            }}>
+              Apply current configuration settings to the same audio
+            </p>
+          )}
+        </div>
+      )}
 
-      {/* Audio Preview */}
+      {/* Audio Preview - Only shown after audio is loaded */}
       {audioBlob && (
         <div style={{
-          marginBottom: '1rem',
+          marginBottom: '2rem',
           padding: '1rem',
           backgroundColor: '#f0f9ff',
           borderRadius: '0.5rem',
@@ -473,42 +455,93 @@ export default function Home() {
         </div>
       )}
 
-      {/* Transcript Display */}
-      <div style={{
-        border: '1px solid #e5e7eb',
-        borderRadius: '0.5rem',
-        padding: '1.5rem',
-        minHeight: '300px',
-        backgroundColor: '#f9fafb',
-        position: 'relative'
-      }}>
-        <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#374151' }}>
-          Transcript
-        </h3>
-        
-        <div style={{ 
-          whiteSpace: 'pre-wrap', 
-          lineHeight: '1.6',
-          color: '#1f2937',
-          minHeight: '200px'
+      {/* Transcript Display - Only shown after transcription is complete */}
+      {transcript && (
+        <div style={{
+          border: '1px solid #e5e7eb',
+          borderRadius: '0.5rem',
+          padding: '1.5rem',
+          minHeight: '300px',
+          backgroundColor: '#f9fafb',
+          position: 'relative',
+          marginBottom: '2rem'
         }}>
-          {transcript || (isProcessing ? 
-            `Processing with ${selectedProvider === 'gemini' ? 'Gemini AI' : 'Docker Whisper'} (${selectedModel} model)...` : 
-            'Transcript will appear here after recording or uploading audio')}
-        </div>
-        
-        {transcript && (
+          <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#374151' }}>
+            Transcript
+          </h3>
+          
+          <div style={{ 
+            whiteSpace: 'pre-wrap', 
+            lineHeight: '1.6',
+            color: '#1f2937',
+            minHeight: '200px',
+            marginBottom: '3rem'
+          }}>
+            {transcript}
+          </div>
+          
           <div style={{
             position: 'absolute',
             bottom: '1rem',
             right: '1rem',
             fontSize: '0.875rem',
-            color: '#6b7280'
+            color: '#6b7280',
+            textAlign: 'right'
           }}>
-            {transcript.split(' ').length} words
+            <div>{transcript.split(' ').length} words</div>
+            {transcriptionTime && (
+              <div style={{ marginTop: '0.25rem' }}>
+                {transcriptionTime < 1 
+                  ? `${(transcriptionTime * 1000).toFixed(0)}ms` 
+                  : `${transcriptionTime.toFixed(1)}s`} elapsed
+              </div>
+            )}
           </div>
-        )}
-      </div>
+
+          {/* Download buttons under transcript */}
+          <div style={{
+            position: 'absolute',
+            bottom: '1rem',
+            left: '1rem',
+            display: 'flex',
+            gap: '0.5rem'
+          }}>
+            <button
+              onClick={downloadText}
+              style={{
+                padding: '0.5rem 1rem',
+                fontSize: '0.9rem',
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.25rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              📄 Download text
+            </button>
+            
+            {audioSource === 'recorded' && (
+              <button
+                onClick={downloadAudio}
+                style={{
+                  padding: '0.5rem 1rem',
+                  fontSize: '0.9rem',
+                  backgroundColor: '#8b5cf6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.25rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                💾 Download audio
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       
       <style jsx>{`
         @keyframes pulse {
