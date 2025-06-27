@@ -28,14 +28,48 @@ A production-ready ASR (Automatic Speech Recognition) server built with Next.js 
 │                 │    │   (Port 3001/   │    │   (Internal     │
 │                 │    │    9001)        │    │    Network)     │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
+                              │                        │
+                              ▼                        │
+                       ┌─────────────────┐             │
+                       │   API Key Auth  │             │
+                       │   Rate Limiting │             │
+                       │   Validation    │             │
+                       └─────────────────┘             │
+                              │                        │
+                              ▼                        │
+                       ┌─────────────────┐             │
+                       │   Provider      │             │
+                       │   Selection     │             │
+                       │   (Whisper/     │             │
+                       │    Gemini)      │             │
+                       └─────────────────┘             │
+                              │                        │
+                              ├────────────────────────┘
                               │
                               ▼
                        ┌─────────────────┐
-                       │   API Key Auth  │
-                       │   Rate Limiting │
-                       │   Validation    │
+                       │   Gemini AI     │
+                       │   (Google API)  │
                        └─────────────────┘
 ```
+
+### Transcription Providers
+
+The ASR server now supports multiple transcription providers:
+
+#### Whisper (Local Docker)
+- ✅ Self-hosted OpenAI Whisper models
+- ✅ Complete privacy - no external API calls
+- ✅ Multiple model sizes (tiny, base, small, medium, large)
+- ✅ Language-specific transcription
+- ✅ Fast local processing
+
+#### Gemini AI (Google)
+- ✅ Google's latest Gemini models (2.0 Flash, 1.5 Pro, 2.5 Flash)
+- ✅ Superior accuracy for complex audio
+- ✅ Automatic language detection
+- ✅ Longer audio file support (up to 8.4 hours)
+- ✅ Advanced speaker diarization capabilities
 
 ### Security Model
 
@@ -43,6 +77,7 @@ A production-ready ASR (Automatic Speech Recognition) server built with Next.js 
 - ✅ All external access through protected API endpoints
 - ✅ API key authentication and rate limiting
 - ✅ Request validation and comprehensive error handling
+- ✅ Secure Gemini API key management
 
 ## Quick Start Guide
 
@@ -173,6 +208,9 @@ WHISPER_API_URL=http://whisper-backend:9000
 WHISPER_MODEL=base
 WHISPER_DEFAULT_LANGUAGE=en
 SUPPORTED_LANGUAGES=en,it,fr,es,de
+
+# Note: Gemini API key is now loaded from .secrets file
+# Add GEMINI_API_KEY=your-google-genai-api-key-here to your .secrets file
 ```
 
 #### Production (config/.env.production)
@@ -184,15 +222,22 @@ SUPPORTED_LANGUAGES=en,it,fr,es,de
 ASR_RATE_LIMIT_PER_MINUTE=30
 ASR_SECRETS_FILE=.secrets
 NODE_ENV=production
+
+# Note: Gemini API key is now loaded from .secrets file
+# Add GEMINI_API_KEY=your-google-genai-api-key-here to your .secrets file
 ```
 
 ### API Keys (.secrets)
 
 Create a `.secrets` file with your API keys:
 ```bash
+# ASR API Keys
 ASR_API_KEY_1=asr_prod_your_secure_key_here
 ASR_API_KEY_2=asr_backup_another_key_here
 ASR_API_KEY_3=asr_dev_development_key_here
+
+# Gemini AI API Key - Get from: https://aistudio.google.com/app/apikey
+GEMINI_API_KEY=your-google-genai-api-key-here
 ```
 
 #### Automatic Permission Handling
@@ -377,12 +422,55 @@ curl -X POST \
   -F "audio_file=@your-audio.mp3" \
   "http://localhost:3001/api/v1/detect-language"
 
-# Test enhanced transcription
+# Test enhanced transcription with Whisper
 curl -X POST \
   -H "X-API-Key: $API_KEY" \
   -F "audio=@your-audio.mp3" \
   "http://localhost:3001/api/v1/transcribe-direct?language=en"
+
+# Test transcription with Gemini (requires OPENAI_API_KEY)
+curl -X POST \
+  -F "audio=@your-audio.mp3" \
+  "http://localhost:3001/api/transcribe?provider=gemini&model=gemini-2.0-flash"
+
+# Test transcription with Whisper via new endpoint
+curl -X POST \
+  -F "audio=@your-audio.mp3" \
+  "http://localhost:3001/api/transcribe?provider=whisper&model=base&language=en"
 ```
+
+### Testing Gemini Integration
+
+To test the new Gemini AI integration:
+
+1. **Get a Google AI API Key**:
+   - Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
+   - Create a new API key
+   - Add it to your .secrets file: `GEMINI_API_KEY=your-key-here`
+
+2. **Test via Frontend**:
+   - Open http://localhost:3001 (development)
+   - Select "Gemini (Google AI)" from the Provider dropdown
+   - Choose a Gemini model (2.0 Flash, 1.5 Pro, or 2.5 Flash)
+   - Record or upload audio and test transcription
+
+3. **Test via API**:
+   ```bash
+   # Test Gemini 2.0 Flash (fastest)
+   curl -X POST \
+     -F "audio=@your-audio.mp3" \
+     "http://localhost:3001/api/transcribe?provider=gemini&model=gemini-2.0-flash"
+   
+   # Test Gemini 1.5 Pro (highest quality)
+   curl -X POST \
+     -F "audio=@your-audio.mp3" \
+     "http://localhost:3001/api/transcribe?provider=gemini&model=gemini-1.5-pro"
+   ```
+
+4. **Compare Results**:
+   - Test the same audio file with both Whisper and Gemini
+   - Compare accuracy, speed, and language detection capabilities
+   - Note that Gemini automatically detects language while Whisper uses specified language
 
 ### Using Swagger UI
 

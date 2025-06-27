@@ -7,6 +7,7 @@ export default function Home() {
   const [transcript, setTranscript] = useState('')
   const [status, setStatus] = useState('Ready to record')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [selectedProvider, setSelectedProvider] = useState('whisper')
   const [selectedModel, setSelectedModel] = useState('base')
   const [selectedLanguage, setSelectedLanguage] = useState('en')
   
@@ -81,14 +82,17 @@ export default function Home() {
     if (!blob) return
 
     setIsProcessing(true)
-    setStatus(`Processing with ${selectedModel} model (${selectedLanguage})...`)
+    const providerName = selectedProvider === 'gemini' ? 'Gemini AI' : 'Docker Whisper'
+    const languageText = selectedProvider === 'gemini' ? 'auto-detect' : selectedLanguage
+    setStatus(`Processing with ${providerName} (${selectedModel}, ${languageText})...`)
 
     try {
       const formData = new FormData()
       formData.append('audio', blob, 'recording.mp3')
 
-      // Build URL with model and language parameters
+      // Build URL with provider, model and language parameters
       const queryParams = new URLSearchParams({
+        provider: selectedProvider,
         model: selectedModel,
         language: selectedLanguage
       })
@@ -103,7 +107,10 @@ export default function Home() {
         if (response.status === 400 && errorData.error === 'Language not supported') {
           throw new Error(`Language '${selectedLanguage}' is not supported. Supported languages: ${errorData.supportedLanguages?.join(', ')}`)
         }
-        throw new Error(errorData.error || `Server error: ${response.status}`)
+        if (response.status === 500 && errorData.error === 'Gemini API configuration error') {
+          throw new Error('Gemini API key not configured. Please set OPENAI_API_KEY environment variable.')
+        }
+        throw new Error(errorData.error || errorData.message || `Server error: ${response.status}`)
       }
 
       const result = await response.json()
@@ -113,7 +120,8 @@ export default function Home() {
       }
 
       setTranscript(result.transcript)
-      setStatus(`Transcription complete! (Model: ${result.model}, Output lang: ${result.language})`)
+      const providerDisplay = result.provider === 'gemini' ? 'Gemini AI' : 'Whisper'
+      setStatus(`Transcription complete! (${providerDisplay}: ${result.model}, Lang: ${result.language})`)
 
     } catch (error) {
       setStatus('Error: ' + error.message)
@@ -174,7 +182,33 @@ export default function Home() {
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#374151' }}>
-              Model Size:
+              Provider:
+            </label>
+            <select
+              value={selectedProvider}
+              onChange={(e) => {
+                setSelectedProvider(e.target.value)
+                // Reset model to default for the new provider
+                setSelectedModel(e.target.value === 'gemini' ? 'gemini-2.0-flash' : 'base')
+              }}
+              disabled={isRecording || isProcessing}
+              style={{
+                padding: '0.5rem',
+                borderRadius: '0.25rem',
+                border: '1px solid #d1d5db',
+                backgroundColor: 'white',
+                cursor: (isRecording || isProcessing) ? 'not-allowed' : 'pointer',
+                opacity: (isRecording || isProcessing) ? 0.5 : 1
+              }}
+            >
+              <option value="whisper">Whisper (Local Docker)</option>
+              <option value="gemini">Gemini (Google AI)</option>
+            </select>
+          </div>
+          
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#374151' }}>
+              Model:
             </label>
             <select
               value={selectedModel}
@@ -189,11 +223,21 @@ export default function Home() {
                 opacity: (isRecording || isProcessing) ? 0.5 : 1
               }}
             >
-              <option value="tiny">Tiny (fastest, least accurate)</option>
-              <option value="base">Base (balanced)</option>
-              <option value="small">Small (good accuracy)</option>
-              <option value="medium">Medium (better accuracy)</option>
-              <option value="large">Large (best accuracy, slowest)</option>
+              {selectedProvider === 'gemini' ? (
+                <>
+                  <option value="gemini-2.0-flash">Gemini 2.0 Flash (Fast & Accurate)</option>
+                  <option value="gemini-1.5-pro">Gemini 1.5 Pro (High Quality)</option>
+                  <option value="gemini-2.5-flash">Gemini 2.5 Flash (Latest)</option>
+                </>
+              ) : (
+                <>
+                  <option value="tiny">Tiny (fastest, least accurate)</option>
+                  <option value="base">Base (balanced)</option>
+                  <option value="small">Small (good accuracy)</option>
+                  <option value="medium">Medium (better accuracy)</option>
+                  <option value="large">Large (best accuracy, slowest)</option>
+                </>
+              )}
             </select>
           </div>
           
@@ -361,7 +405,9 @@ export default function Home() {
           color: '#1f2937',
           minHeight: '200px'
         }}>
-          {transcript || (isProcessing ? `Processing with Docker Whisper service (${selectedModel} model, ${selectedLanguage})...` : 'Transcript will appear here after recording')}
+          {transcript || (isProcessing ? 
+            `Processing with ${selectedProvider === 'gemini' ? 'Gemini AI' : 'Docker Whisper'} (${selectedModel} model)...` : 
+            'Transcript will appear here after recording')}
         </div>
         
         {transcript && (

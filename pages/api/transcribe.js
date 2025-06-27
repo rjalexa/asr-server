@@ -1,6 +1,11 @@
 import multer from 'multer'
 import FormData from 'form-data'
 import fetch from 'node-fetch'
+import { GoogleGenAI, createUserContent, createPartFromUri } from '@google/genai'
+import fs from 'fs/promises'
+import fsSync from 'fs'
+import path from 'path'
+import os from 'os'
 
 // Configure multer for file uploads
 const upload = multer({
@@ -43,10 +48,128 @@ function validateLanguage(language) {
   return supportedLanguages.includes(language)
 }
 
-// Validate model
-function validateModel(model) {
-  const supportedModels = ['tiny', 'base', 'small', 'medium', 'large']
-  return supportedModels.includes(model)
+// Validate model based on provider
+function validateModel(model, provider = 'whisper') {
+  if (provider === 'gemini') {
+    const supportedGeminiModels = ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-2.5-flash']
+    return supportedGeminiModels.includes(model)
+  }
+  const supportedWhisperModels = ['tiny', 'base', 'small', 'medium', 'large']
+  return supportedWhisperModels.includes(model)
+}
+
+// Validate provider
+function validateProvider(provider) {
+  const supportedProviders = ['whisper', 'gemini']
+  return supportedProviders.includes(provider)
+}
+
+// Load secrets from .secrets file
+function loadSecrets() {
+  try {
+    const secretsFile = process.env.ASR_SECRETS_FILE || '.secrets'
+    const secretsPath = path.join(process.cwd(), secretsFile)
+    
+    if (!fsSync.existsSync(secretsPath)) {
+      console.warn(`Secrets file not found: ${secretsPath}`)
+      return {}
+    }
+
+    const content = fsSync.readFileSync(secretsPath, 'utf8')
+    const secrets = {}
+    
+    content.split('\n').forEach(line => {
+      line = line.trim()
+      if (line && !line.startsWith('#') && line.includes('=')) {
+        const [keyName, keyValue] = line.split('=', 2)
+        if (keyName && keyValue) {
+          secrets[keyName.trim()] = keyValue.trim()
+        }
+      }
+    })
+    
+    return secrets
+  } catch (error) {
+    console.error('Error loading secrets:', error)
+    return {}
+  }
+}
+
+// Get Gemini API key from secrets or environment
+function getGeminiApiKey() {
+  const secrets = loadSecrets()
+  
+  // Try to get from secrets file first
+  const geminiKey = secrets.GEMINI_API_KEY || secrets.GOOGLE_API_KEY
+  if (geminiKey) {
+    return geminiKey
+  }
+  
+  // Fallback to environment variable for backward compatibility
+  return process.env.OPENAI_API_KEY
+}
+
+// Transcribe using Gemini API
+async function transcribeWithGemini(audioBuffer, filename, model = 'gemini-2.0-flash') {
+  const geminiApiKey = getGeminiApiKey()
+  
+  if (!geminiApiKey) {
+    throw new Error('Gemini API key not found. Please add GEMINI_API_KEY or GOOGLE_API_KEY to your .secrets file')
+  }
+
+  const ai = new GoogleGenAI({ apiKey: geminiApiKey })
+  
+  // Create temp file
+  const tempDir = os.tmpdir()
+  const tempFilePath = path.join(tempDir, `gemini-upload-${Date.now()}-${filename}`)
+  
+  try {
+    console.log(`Creating temp file for Gemini upload: ${tempFilePath}`)
+    
+    // Write buffer to temp file
+    await fs.writeFile(tempFilePath, audioBuffer)
+    
+    console.log(`Uploading file to Gemini: ${filename} (${audioBuffer.length} bytes)`)
+    
+    // Upload to Gemini
+    const uploadedFile = await ai.files.upload({
+      file: tempFilePath,
+      config: { mimeType: 'audio/mpeg' }
+    })
+    
+    console.log(`File uploaded to Gemini with URI: ${uploadedFile.uri}`)
+    
+    // Generate transcript
+    const result = await ai.models.generateContent({
+      model: model,
+      contents: createUserContent([
+        createPartFromUri(uploadedFile.uri, uploadedFile.mimeType),
+        "Generate a transcript of the speech. Return only the transcript text without any additional formatting or explanation."
+      ]),
+    })
+    
+    const transcript = result.text?.trim() || 'No speech detected'
+    console.log(`Gemini transcription complete: "${transcript}"`)
+    
+    return {
+      transcript: transcript,
+      language: 'auto-detected', // Gemini auto-detects language
+      confidence: null,
+      provider: 'gemini'
+    }
+    
+  } catch (error) {
+    console.error('Gemini transcription error:', error)
+    throw new Error(`Gemini transcription failed: ${error.message}`)
+  } finally {
+    // Clean up temp file
+    try {
+      await fs.unlink(tempFilePath)
+      console.log(`Cleaned up temp file: ${tempFilePath}`)
+    } catch (e) {
+      console.error('Failed to clean temp file:', e)
+    }
+  }
 }
 
 // Transcribe using Whisper Docker service
@@ -116,20 +239,35 @@ export default async function handler(req, res) {
     }
 
     // Get parameters from query or use defaults
-    const model = req.query.model || process.env.WHISPER_MODEL || 'base'
+    const provider = req.query.provider || 'whisper'
+    const model = req.query.model || (provider === 'gemini' ? 'gemini-2.0-flash' : process.env.WHISPER_MODEL || 'base')
     const language = req.query.language || process.env.WHISPER_DEFAULT_LANGUAGE || 'en'
 
-    // Validate model
-    if (!validateModel(model)) {
+    // Validate provider
+    if (!validateProvider(provider)) {
       return res.status(400).json({ 
-        error: 'Unsupported model',
-        supportedModels: ['tiny', 'base', 'small', 'medium', 'large'],
+        error: 'Unsupported provider',
+        supportedProviders: ['whisper', 'gemini'],
+        provided: provider
+      })
+    }
+
+    // Validate model for the selected provider
+    if (!validateModel(model, provider)) {
+      const supportedModels = provider === 'gemini' 
+        ? ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-2.5-flash']
+        : ['tiny', 'base', 'small', 'medium', 'large']
+      
+      return res.status(400).json({ 
+        error: 'Unsupported model for provider',
+        supportedModels: supportedModels,
+        provider: provider,
         provided: model
       })
     }
 
-    // Validate language
-    if (!validateLanguage(language)) {
+    // For Whisper, validate language (Gemini auto-detects)
+    if (provider === 'whisper' && !validateLanguage(language)) {
       return res.status(400).json({ 
         error: 'Language not supported',
         supportedLanguages: (process.env.SUPPORTED_LANGUAGES || 'en,it,fr,es,de').split(','),
@@ -138,15 +276,24 @@ export default async function handler(req, res) {
     }
 
     console.log(`Processing audio file: ${req.file.originalname}, size: ${req.file.size} bytes`)
-    console.log(`Using model: ${model}, language: ${language}`)
+    console.log(`Using provider: ${provider}, model: ${model}, language: ${language}`)
 
-    // Transcribe using Whisper Docker service
-    const result = await transcribeWithWhisperService(
-      req.file.buffer, 
-      req.file.originalname,
-      model,
-      language
-    )
+    // Route to appropriate transcription service
+    let result
+    if (provider === 'gemini') {
+      result = await transcribeWithGemini(
+        req.file.buffer,
+        req.file.originalname,
+        model
+      )
+    } else {
+      result = await transcribeWithWhisperService(
+        req.file.buffer, 
+        req.file.originalname,
+        model,
+        language
+      )
+    }
 
     console.log(`Transcription complete: "${result.transcript}"`)
 
@@ -154,6 +301,7 @@ export default async function handler(req, res) {
       transcript: result.transcript,
       language: result.language,
       model: model,
+      provider: provider,
       confidence: result.confidence,
       size: req.file.size,
       filename: req.file.originalname
@@ -167,6 +315,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ 
         error: 'Language not supported',
         supportedLanguages: (process.env.SUPPORTED_LANGUAGES || 'en,it,fr,es,de').split(',')
+      })
+    }
+    
+    if (error.message.includes('Gemini API key not found')) {
+      return res.status(500).json({ 
+        error: 'Gemini API configuration error',
+        message: 'Please add GEMINI_API_KEY or GOOGLE_API_KEY to your .secrets file'
       })
     }
     

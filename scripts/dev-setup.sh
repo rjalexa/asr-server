@@ -73,6 +73,10 @@ check_api_keys() {
 ASR_API_KEY_1=asr_dev_$(date +%s)_$(openssl rand -hex 16)
 ASR_API_KEY_2=asr_dev_$(date +%s)_$(openssl rand -hex 16)
 ASR_API_KEY_3=asr_dev_$(date +%s)_$(openssl rand -hex 16)
+
+# Gemini AI API Key - Add your Google AI API key here for Gemini transcription
+# Get your key from: https://aistudio.google.com/app/apikey
+GEMINI_API_KEY=your-google-genai-api-key-here
 EOF
         print_info "Created .secrets file with sample keys"
         print_warning "Please update the API keys in .secrets file if needed"

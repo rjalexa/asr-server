@@ -14,7 +14,6 @@ export default function ApiDocs() {
       <Head>
         <title>ASR API Documentation</title>
         <meta name="description" content="Interactive API documentation for ASR Server" />
-        <link rel="stylesheet" href="/swagger-custom.css" />
       </Head>
       <div style={{ background: '#fafafa', padding: 20, minHeight: '100vh' }}>
         <SwaggerUI
