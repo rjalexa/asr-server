@@ -110,7 +110,7 @@ function getGeminiApiKey() {
 }
 
 // Transcribe using Gemini API
-async function transcribeWithGemini(audioBuffer, filename, model = 'gemini-2.5-flash') {
+async function transcribeWithGemini(audioBuffer, filename, model = 'gemini-2.5-flash', temperature = 0) {
   const geminiApiKey = getGeminiApiKey()
   
   if (!geminiApiKey) {
@@ -146,6 +146,9 @@ async function transcribeWithGemini(audioBuffer, filename, model = 'gemini-2.5-f
         createPartFromUri(uploadedFile.uri, uploadedFile.mimeType),
         "Generate a transcript of the speech. Return only the transcript text without any additional formatting or explanation."
       ]),
+      generationConfig: {
+        temperature: temperature
+      }
     })
     
     const transcript = result.text?.trim() || 'No speech detected'
@@ -242,6 +245,7 @@ export default async function handler(req, res) {
     const provider = req.query.provider || 'whisper'
     const model = req.query.model || (provider === 'gemini' ? 'gemini-2.5-flash' : process.env.WHISPER_MODEL || 'base')
     const language = req.query.language || process.env.WHISPER_DEFAULT_LANGUAGE || 'en'
+    const temperature = parseFloat(req.query.temperature) || 0
 
     // Validate provider
     if (!validateProvider(provider)) {
@@ -276,7 +280,7 @@ export default async function handler(req, res) {
     }
 
     console.log(`Processing audio file: ${req.file.originalname}, size: ${req.file.size} bytes`)
-    console.log(`Using provider: ${provider}, model: ${model}, language: ${language}`)
+    console.log(`Using provider: ${provider}, model: ${model}, language: ${language}${provider === 'gemini' ? `, temperature: ${temperature}` : ''}`)
 
     // Route to appropriate transcription service
     let result
@@ -284,7 +288,8 @@ export default async function handler(req, res) {
       result = await transcribeWithGemini(
         req.file.buffer,
         req.file.originalname,
-        model
+        model,
+        temperature
       )
     } else {
       result = await transcribeWithWhisperService(

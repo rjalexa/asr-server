@@ -11,6 +11,7 @@ export default function Home() {
   const [selectedProvider, setSelectedProvider] = useState('whisper')
   const [selectedModel, setSelectedModel] = useState('base')
   const [selectedLanguage, setSelectedLanguage] = useState('en')
+  const [temperature, setTemperature] = useState(0.4)
   const [uploadedFile, setUploadedFile] = useState(null)
   const [audioSource, setAudioSource] = useState(null) // 'recorded' or 'uploaded'
   const [transcriptionTime, setTranscriptionTime] = useState(null) // elapsed time in seconds
@@ -105,6 +106,11 @@ export default function Home() {
         model: selectedModel,
         language: selectedLanguage
       })
+
+      // Add temperature parameter for Gemini
+      if (selectedProvider === 'gemini') {
+        queryParams.append('temperature', temperature.toString())
+      }
 
       const response = await fetch(`/api/transcribe?${queryParams}`, {
         method: 'POST',
@@ -240,7 +246,7 @@ export default function Home() {
               onChange={(e) => {
                 setSelectedProvider(e.target.value)
                 // Reset model to default for the new provider
-                setSelectedModel(e.target.value === 'gemini' ? 'gemini-2.0-flash' : 'base')
+                setSelectedModel(e.target.value === 'gemini' ? 'gemini-2.5-flash' : 'base')
               }}
               disabled={isRecording || isProcessing}
               style={{
@@ -276,9 +282,8 @@ export default function Home() {
             >
               {selectedProvider === 'gemini' ? (
                 <>
-                  <option value="gemini-2.0-flash">Gemini 2.0 Flash (Fast & Accurate)</option>
-                  <option value="gemini-1.5-pro">Gemini 1.5 Pro (High Quality)</option>
-                  <option value="gemini-2.5-flash">Gemini 2.5 Flash (Latest)</option>
+                  <option value="gemini-2.5-flash">Gemini 2.5 Flash (Latest & Fast)</option>
+                  <option value="gemini-2.5-pro">Gemini 2.5 Pro (Highest Quality)</option>
                 </>
               ) : (
                 <>
@@ -316,6 +321,31 @@ export default function Home() {
               <option value="de">German</option>
             </select>
           </div>
+          
+          {selectedProvider === 'gemini' && (
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#374151' }}>
+                Temperature: {temperature}
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.1"
+                value={temperature}
+                onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                disabled={isRecording || isProcessing}
+                style={{
+                  width: '120px',
+                  cursor: (isRecording || isProcessing) ? 'not-allowed' : 'pointer',
+                  opacity: (isRecording || isProcessing) ? 0.5 : 1
+                }}
+              />
+              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                0.0 = Deterministic, 2.0 = Very Creative
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
