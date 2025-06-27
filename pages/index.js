@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import Navigation from '../components/Navigation'
+import { splitTranscriptIntoPhrases, getPhraseStats } from '../lib/phraseSplitter'
 
 export default function Home() {
   const [isRecording, setIsRecording] = useState(false)
@@ -13,6 +14,7 @@ export default function Home() {
   const [uploadedFile, setUploadedFile] = useState(null)
   const [audioSource, setAudioSource] = useState(null) // 'recorded' or 'uploaded'
   const [transcriptionTime, setTranscriptionTime] = useState(null) // elapsed time in seconds
+  const [showPhrases, setShowPhrases] = useState(false) // toggle for phrase view
   
   const mediaRecorderRef = useRef(null)
   const streamRef = useRef(null)
@@ -199,11 +201,15 @@ export default function Home() {
   const downloadText = () => {
     if (!transcript) return
     
-    const blob = new Blob([transcript], { type: 'text/plain' })
+    // Use phrase-split version if that view is active
+    const textToDownload = showPhrases ? splitTranscriptIntoPhrases(transcript) : transcript
+    const filename = showPhrases ? 'transcript-phrases.txt' : 'transcript.txt'
+    
+    const blob = new Blob([textToDownload], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'transcript.txt'
+    a.download = filename
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -466,18 +472,62 @@ export default function Home() {
           position: 'relative',
           marginBottom: '2rem'
         }}>
-          <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#374151' }}>
-            Transcript
-          </h3>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '1rem'
+          }}>
+            <h3 style={{ margin: 0, color: '#374151' }}>
+              Transcript
+            </h3>
+            
+            {/* Phrase Toggle Button */}
+            <button
+              onClick={() => setShowPhrases(!showPhrases)}
+              style={{
+                padding: '0.5rem 1rem',
+                fontSize: '0.875rem',
+                backgroundColor: showPhrases ? '#8b5cf6' : '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.25rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              {showPhrases ? '📝' : '🔤'} {showPhrases ? 'Show Original' : 'Split Phrases'}
+            </button>
+          </div>
+          
+          {/* Phrase Statistics - Only shown in phrase mode */}
+          {showPhrases && (() => {
+            const stats = getPhraseStats(transcript)
+            return (
+              <div style={{
+                fontSize: '0.875rem',
+                color: '#6b7280',
+                marginBottom: '1rem',
+                padding: '0.5rem',
+                backgroundColor: '#f3f4f6',
+                borderRadius: '0.25rem'
+              }}>
+                {stats.phraseCount} phrases • {stats.avgWordsPerPhrase} avg words per phrase
+              </div>
+            )
+          })()}
           
           <div style={{ 
             whiteSpace: 'pre-wrap', 
-            lineHeight: '1.6',
+            lineHeight: showPhrases ? '1.8' : '1.6',
             color: '#1f2937',
             minHeight: '200px',
             marginBottom: '3rem'
           }}>
-            {transcript}
+            {showPhrases ? splitTranscriptIntoPhrases(transcript) : transcript}
           </div>
           
           <div style={{
