@@ -13,10 +13,10 @@ services:
     environment:
       - NODE_ENV=development
       - WHISPER_API_URL=http://whisper-backend:9000
-      - WHISPERX_API_URL=http://whisperx-api:8000
       - WHISPER_MODEL=base
       - WHISPER_DEFAULT_LANGUAGE=en
       - SUPPORTED_LANGUAGES=en,it,fr,es,de
+      - AVAILABLE_PROVIDERS=whisper,gemini
     depends_on:
       - whisper-backend
     networks:
@@ -38,18 +38,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-
-  whisperx-api:
-    image: pluja/whisperx-api:cpu
-    container_name: whisperx-api-dev
-    volumes:
-      - ../data/uploads:/app/data
-      - ../data/whisper_models:/app/wx_models
-    environment:
-      WHISPER_THREADS: 2
-      WHISPER_DEVICE: cpu
-    networks:
-      - whisper-network
 
 volumes:
   whisper-models-dev:

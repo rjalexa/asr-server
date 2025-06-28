@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Navigation from '../components/Navigation'
 import { splitTranscriptIntoPhrases, getPhraseStats } from '../lib/phraseSplitter'
 
@@ -15,11 +15,36 @@ export default function Home() {
   const [uploadedFile, setUploadedFile] = useState(null)
   const [audioSource, setAudioSource] = useState(null) // 'recorded' or 'uploaded'
   const [showPhrases, setShowPhrases] = useState({}) // toggle for phrase view per transcript
+  const [availableProviders, setAvailableProviders] = useState(['whisper', 'gemini']) // default fallback
   
   const mediaRecorderRef = useRef(null)
   const streamRef = useRef(null)
   const audioChunksRef = useRef([])
   const fileInputRef = useRef(null)
+
+  // Fetch available providers on component mount
+  useEffect(() => {
+    const fetchAvailableProviders = async () => {
+      try {
+        const response = await fetch('/api/health')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.availableProviders) {
+            setAvailableProviders(data.availableProviders)
+            // If current selected provider is not available, switch to first available
+            if (!data.availableProviders.includes(selectedProvider)) {
+              setSelectedProvider(data.availableProviders[0] || 'whisper')
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Could not fetch available providers, using defaults:', error)
+        // Keep default fallback providers
+      }
+    }
+    
+    fetchAvailableProviders()
+  }, [selectedProvider])
 
   const startRecording = async () => {
     // Check if there are existing transcripts and warn user
@@ -364,9 +389,15 @@ export default function Home() {
                 opacity: (isRecording || isProcessing) ? 0.5 : 1
               }}
             >
-              <option value="whisper">Whisper (Local Docker)</option>
-              <option value="whisperx">WhisperX (Enhanced)</option>
-              <option value="gemini">Gemini (Google AI)</option>
+              {availableProviders.includes('whisper') && (
+                <option value="whisper">Whisper (Local Docker)</option>
+              )}
+              {availableProviders.includes('whisperx') && (
+                <option value="whisperx">WhisperX (Enhanced)</option>
+              )}
+              {availableProviders.includes('gemini') && (
+                <option value="gemini">Gemini (Google AI)</option>
+              )}
             </select>
           </div>
           
