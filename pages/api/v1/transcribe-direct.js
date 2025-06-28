@@ -82,11 +82,15 @@ const upload = multer({
     fileSize: 50 * 1024 * 1024, // 50MB limit for direct API
   },
   fileFilter: (req, file, cb) => {
-    // Accept audio files
-    if (file.mimetype.startsWith('audio/')) {
+    // Accept audio files and video files (which may contain audio)
+    const isAudioFile = file.mimetype.startsWith('audio/')
+    const isVideoFile = file.mimetype.startsWith('video/')
+    const supportedVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo']
+    
+    if (isAudioFile || (isVideoFile && supportedVideoTypes.includes(file.mimetype))) {
       cb(null, true)
     } else {
-      cb(new Error('Only audio files are allowed'), false)
+      cb(new Error('Only audio files or video files with audio track are allowed'), false)
     }
   }
 })
@@ -203,11 +207,30 @@ async function transcribeWithWhisperService(audioBuffer, filename, model, langua
   const whisperApiUrl = process.env.WHISPER_API_URL || 'http://whisper-backend:9000'
   
   try {
+    // Determine content type from filename extension
+    let contentType = 'audio/mpeg' // default fallback
+    if (filename) {
+      const ext = filename.toLowerCase().split('.').pop()
+      const mimeTypes = {
+        'mp3': 'audio/mpeg',
+        'mp4': 'video/mp4',
+        'm4a': 'audio/mp4',
+        'wav': 'audio/wav',
+        'webm': 'video/webm',
+        'ogg': 'audio/ogg',
+        'flac': 'audio/flac',
+        'aac': 'audio/aac',
+        'mov': 'video/quicktime',
+        'avi': 'video/x-msvideo'
+      }
+      contentType = mimeTypes[ext] || contentType
+    }
+
     // Create form data for the request
     const formData = new FormData()
     formData.append('audio_file', audioBuffer, {
       filename: filename,
-      contentType: 'audio/mpeg'
+      contentType: contentType
     })
 
     // Build query parameters
@@ -216,13 +239,14 @@ async function transcribeWithWhisperService(audioBuffer, filename, model, langua
       task: 'transcribe',
       language: language,
       word_timestamps: 'false',
-      output: 'json'
+      output: 'json',
+      model: model
     })
 
     const url = `${whisperApiUrl}/asr?${queryParams}`
     
     console.log(`[Enhanced API v1] Making request to Whisper service: ${url}`)
-    console.log(`[Enhanced API v1] Model: ${model}, Language: ${language}`)
+    console.log(`[Enhanced API v1] File: ${filename}, MIME: ${contentType}, Model: ${model}, Language: ${language}`)
 
     const response = await fetch(url, {
       method: 'POST',

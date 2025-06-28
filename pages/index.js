@@ -128,7 +128,16 @@ export default function Home() {
 
     try {
       const formData = new FormData()
-      formData.append('audio', blob, 'recording.mp3')
+      
+      // Use appropriate filename and content type based on source
+      let filename = 'recording.mp3'
+      if (audioSource === 'uploaded' && uploadedFile) {
+        filename = uploadedFile.name
+        // Log file details for debugging
+        console.log(`Uploading file: ${uploadedFile.name}, Type: ${uploadedFile.type}, Size: ${uploadedFile.size}`)
+      }
+      
+      formData.append('audio', blob, filename)
 
       // Build URL with provider, model and language parameters
       const queryParams = new URLSearchParams({
@@ -140,7 +149,6 @@ export default function Home() {
       // Add temperature parameter for Gemini
       if (selectedProvider === 'gemini') {
         queryParams.append('temperature', temperature.toString())
-
       }
 
       const response = await fetch(`/api/transcribe?${queryParams}`, {
@@ -198,9 +206,13 @@ export default function Home() {
     const file = event.target.files[0]
     if (!file) return
 
-    // Check if it's an audio file
-    if (!file.type.startsWith('audio/')) {
-      setStatus('Error: Please select an audio file')
+    // Check if it's an audio or video file (video files may contain audio)
+    const isAudioFile = file.type.startsWith('audio/')
+    const isVideoFile = file.type.startsWith('video/')
+    const supportedVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/avi']
+    
+    if (!isAudioFile && !(isVideoFile && supportedVideoTypes.includes(file.type))) {
+      setStatus('Error: Please select an audio file or video file with audio track (MP4, WebM, MOV, AVI)')
       return
     }
 
@@ -213,7 +225,10 @@ export default function Home() {
     setUploadedFile(file)
     setAudioBlob(file)
     setAudioSource('uploaded')
-    setStatus(`Audio file loaded: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
+    
+    // Enhanced status message with file type info
+    const fileTypeInfo = isVideoFile ? ' (video with audio)' : ' (audio)'
+    setStatus(`File loaded: ${file.name}${fileTypeInfo} (${(file.size / 1024).toFixed(1)} KB)`)
   }
 
   const triggerFileUpload = () => {
@@ -499,7 +514,7 @@ export default function Home() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="audio/*"
+          accept="audio/*,video/mp4,video/webm,video/quicktime,video/avi"
           onChange={handleFileUpload}
           style={{ display: 'none' }}
         />
