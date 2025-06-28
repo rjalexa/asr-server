@@ -5,7 +5,7 @@ import { splitTranscriptIntoPhrases, getPhraseStats } from '../lib/phraseSplitte
 export default function Home() {
   const [isRecording, setIsRecording] = useState(false)
   const [audioBlob, setAudioBlob] = useState(null)
-  const [transcript, setTranscript] = useState('')
+  const [transcripts, setTranscripts] = useState([])
   const [status, setStatus] = useState('Ready to record or upload audio')
   const [isProcessing, setIsProcessing] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState('whisper')
@@ -14,8 +14,7 @@ export default function Home() {
   const [temperature, setTemperature] = useState(0)
   const [uploadedFile, setUploadedFile] = useState(null)
   const [audioSource, setAudioSource] = useState(null) // 'recorded' or 'uploaded'
-  const [transcriptionTime, setTranscriptionTime] = useState(null) // elapsed time in seconds
-  const [showPhrases, setShowPhrases] = useState(false) // toggle for phrase view
+  const [showPhrases, setShowPhrases] = useState({}) // toggle for phrase view per transcript
   
   const mediaRecorderRef = useRef(null)
   const streamRef = useRef(null)
@@ -23,6 +22,20 @@ export default function Home() {
   const fileInputRef = useRef(null)
 
   const startRecording = async () => {
+    // Check if there are existing transcripts and warn user
+    if (transcripts.length > 0) {
+      const confirmed = window.confirm(
+        `Starting a new recording will delete all existing transcripts (${transcripts.length} transcripts).\n\nDo you want to proceed?`
+      )
+      if (!confirmed) {
+        return
+      }
+    }
+
+    // Always clear transcripts when starting new recording (whether there were existing ones or not)
+    setTranscripts([])
+    setShowPhrases({})
+
     try {
       setStatus('Requesting microphone access...')
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -36,8 +49,6 @@ export default function Home() {
       // Reset state
       audioChunksRef.current = []
       setAudioBlob(null)
-      setTranscript('')
-      setTranscriptionTime(null)
 
       // Setup MediaRecorder for MP3 recording
       let mimeType = 'audio/mpeg'
@@ -87,8 +98,27 @@ export default function Home() {
     setIsRecording(false)
   }
 
+  const checkForDuplicateTranscript = () => {
+    return transcripts.some(transcript => 
+      transcript.provider === selectedProvider &&
+      transcript.model === selectedModel &&
+      transcript.language === selectedLanguage
+    )
+  }
+
   const transcribeAudio = async (blob = audioBlob) => {
     if (!blob) return
+
+    // Check for duplicate configuration
+    if (checkForDuplicateTranscript()) {
+      const providerName = selectedProvider === 'gemini' ? 'Gemini AI' : 'Whisper'
+      const confirmed = window.confirm(
+        `A transcript with ${providerName} (${selectedModel}) - ${selectedLanguage.toUpperCase()} already exists.\n\nDo you want to create another transcript with the same configuration?`
+      )
+      if (!confirmed) {
+        return
+      }
+    }
 
     setIsProcessing(true)
     const startTime = Date.now()
@@ -136,9 +166,22 @@ export default function Home() {
 
       const endTime = Date.now()
       const elapsedSeconds = (endTime - startTime) / 1000
-      setTranscriptionTime(elapsedSeconds)
 
-      setTranscript(result.transcript)
+      // Create new transcript object
+      const newTranscript = {
+        id: Date.now(),
+        transcript: result.transcript,
+        provider: result.provider,
+        model: result.model,
+        language: result.language,
+        timestamp: new Date().toLocaleString(),
+        transcriptionTime: elapsedSeconds,
+        confidence: result.confidence
+      }
+
+      // Add to transcripts array
+      setTranscripts(prev => [newTranscript, ...prev])
+
       const providerDisplay = result.provider === 'gemini' ? 'Gemini AI' : 'Whisper'
       setStatus(`Transcription complete! (${providerDisplay}: ${result.model}, Lang: ${result.language})`)
 
@@ -169,8 +212,6 @@ export default function Home() {
     setUploadedFile(file)
     setAudioBlob(file)
     setAudioSource('uploaded')
-    setTranscript('')
-    setTranscriptionTime(null)
     setStatus(`Audio file loaded: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
   }
 
@@ -181,10 +222,10 @@ export default function Home() {
   const clearAll = () => {
     setAudioBlob(null)
     setUploadedFile(null)
-    setTranscript('')
-    setTranscriptionTime(null)
+    setTranscripts([])
     setStatus('Ready to record or upload audio')
     setAudioSource(null)
+    setShowPhrases({})
     audioChunksRef.current = []
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
@@ -204,12 +245,40 @@ export default function Home() {
     URL.revokeObjectURL(url)
   }
 
-  const downloadText = () => {
-    if (!transcript) return
+  const downloadAllTranscripts = () => {
+    if (transcripts.length === 0) return
     
-    // Use phrase-split version if that view is active
-    const textToDownload = showPhrases ? splitTranscriptIntoPhrases(transcript) : transcript
-    const filename = showPhrases ? 'transcript-phrases.txt' : 'transcript.txt'
+    transcripts.forEach((transcript, index) => {
+      const providerName = transcript.provider === 'gemini' ? 'gemini' : 'whisper'
+      // Use transcript ID as timestamp since timestamp is a locale string
+      const timestamp = transcript.id.toString()
+      const filename = `${providerName}_${transcript.model}_${transcript.language}_${timestamp}.txt`
+      
+      const textToDownload = showPhrases[transcript.id] 
+        ? splitTranscriptIntoPhrases(transcript.transcript) 
+        : transcript.transcript
+      
+      const blob = new Blob([textToDownload], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    })
+  }
+
+  const downloadSingleTranscript = (transcript) => {
+    const providerName = transcript.provider === 'gemini' ? 'gemini' : 'whisper'
+    // Use transcript ID as timestamp since timestamp is a locale string
+    const timestamp = transcript.id.toString()
+    const filename = `${providerName}_${transcript.model}_${transcript.language}_${timestamp}.txt`
+    
+    const textToDownload = showPhrases[transcript.id] 
+      ? splitTranscriptIntoPhrases(transcript.transcript) 
+      : transcript.transcript
     
     const blob = new Blob([textToDownload], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
@@ -220,6 +289,22 @@ export default function Home() {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+  }
+
+  const removeTranscript = (transcriptId) => {
+    setTranscripts(prev => prev.filter(t => t.id !== transcriptId))
+    setShowPhrases(prev => {
+      const newState = { ...prev }
+      delete newState[transcriptId]
+      return newState
+    })
+  }
+
+  const togglePhrases = (transcriptId) => {
+    setShowPhrases(prev => ({
+      ...prev,
+      [transcriptId]: !prev[transcriptId]
+    }))
   }
 
   return (
@@ -446,7 +531,7 @@ export default function Home() {
             style={{
               padding: '1rem 2rem',
               fontSize: '1.2rem',
-              backgroundColor: transcript ? '#0ea5e9' : '#059669',
+              backgroundColor: transcripts.length > 0 ? '#0ea5e9' : '#059669',
               color: 'white',
               border: 'none',
               borderRadius: '0.5rem',
@@ -455,16 +540,16 @@ export default function Home() {
               transition: 'all 0.2s'
             }}
           >
-            {transcript ? '🔄 Re-transcribe' : '🎯 Transcribe'}
+            {transcripts.length > 0 ? '🔄 Add New Transcription' : '🎯 Transcribe'}
           </button>
-          {transcript && (
+          {transcripts.length > 0 && (
             <p style={{ 
               fontSize: '0.875rem', 
               color: '#6b7280', 
               marginTop: '0.5rem',
               marginBottom: 0
             }}>
-              Apply current configuration settings to the same audio
+              Apply current configuration settings to create a new transcript ({transcripts.length} existing)
             </p>
           )}
         </div>
@@ -491,34 +576,26 @@ export default function Home() {
         </div>
       )}
 
-      {/* Transcript Display - Only shown after transcription is complete */}
-      {transcript && (
-        <div style={{
-          border: '1px solid #e5e7eb',
-          borderRadius: '0.5rem',
-          padding: '1.5rem',
-          minHeight: '300px',
-          backgroundColor: '#f9fafb',
-          position: 'relative',
-          marginBottom: '2rem'
-        }}>
+      {/* Multiple Transcripts Display */}
+      {transcripts.length > 0 && (
+        <div style={{ marginBottom: '2rem' }}>
           <div style={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center',
-            marginBottom: '1rem'
+            marginBottom: '1.5rem'
           }}>
             <h3 style={{ margin: 0, color: '#374151' }}>
-              Transcript
+              Transcripts ({transcripts.length})
             </h3>
             
-            {/* Phrase Toggle Button */}
+            {/* Download All Button */}
             <button
-              onClick={() => setShowPhrases(!showPhrases)}
+              onClick={downloadAllTranscripts}
               style={{
                 padding: '0.5rem 1rem',
                 fontSize: '0.875rem',
-                backgroundColor: showPhrases ? '#8b5cf6' : '#6b7280',
+                backgroundColor: '#059669',
                 color: 'white',
                 border: 'none',
                 borderRadius: '0.25rem',
@@ -529,80 +606,164 @@ export default function Home() {
                 gap: '0.5rem'
               }}
             >
-              {showPhrases ? '📝' : '🔤'} {showPhrases ? 'Show Original' : 'Split Phrases'}
+              📦 Download All ({transcripts.length} files)
             </button>
-          </div>
-          
-          {/* Phrase Statistics - Only shown in phrase mode */}
-          {showPhrases && (() => {
-            const stats = getPhraseStats(transcript)
-            return (
-              <div style={{
-                fontSize: '0.875rem',
-                color: '#6b7280',
-                marginBottom: '1rem',
-                padding: '0.5rem',
-                backgroundColor: '#f3f4f6',
-                borderRadius: '0.25rem'
-              }}>
-                {stats.phraseCount} phrases • {stats.avgWordsPerPhrase} avg words per phrase
-              </div>
-            )
-          })()}
-          
-          <div style={{ 
-            whiteSpace: 'pre-wrap', 
-            lineHeight: showPhrases ? '1.8' : '1.6',
-            color: '#1f2937',
-            minHeight: '200px',
-            marginBottom: '3rem'
-          }}>
-            {showPhrases ? splitTranscriptIntoPhrases(transcript) : transcript}
-          </div>
-          
-          <div style={{
-            position: 'absolute',
-            bottom: '1rem',
-            right: '1rem',
-            fontSize: '0.875rem',
-            color: '#6b7280',
-            textAlign: 'right'
-          }}>
-            <div>{transcript.split(' ').length} words</div>
-            {transcriptionTime && (
-              <div style={{ marginTop: '0.25rem' }}>
-                {transcriptionTime < 1 
-                  ? `${(transcriptionTime * 1000).toFixed(0)}ms` 
-                  : `${transcriptionTime.toFixed(1)}s`} elapsed
-              </div>
-            )}
           </div>
 
-          {/* Download buttons under transcript */}
-          <div style={{
-            position: 'absolute',
-            bottom: '1rem',
-            left: '1rem',
-            display: 'flex',
-            gap: '0.5rem'
-          }}>
-            <button
-              onClick={downloadText}
-              style={{
-                padding: '0.5rem 1rem',
-                fontSize: '0.9rem',
-                backgroundColor: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '0.25rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              📄 Download text
-            </button>
+          {transcripts.map((transcript, index) => {
+            const providerDisplay = transcript.provider === 'gemini' ? 'Gemini AI' : 'Whisper'
+            const isPhrasesActive = showPhrases[transcript.id] || false
             
-            {audioSource === 'recorded' && (
+            return (
+              <div 
+                key={transcript.id}
+                style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '0.5rem',
+                  padding: '1.5rem',
+                  backgroundColor: '#f9fafb',
+                  position: 'relative',
+                  marginBottom: '1.5rem'
+                }}
+              >
+                {/* Transcript Header */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'flex-start',
+                  marginBottom: '1rem',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem'
+                }}>
+                  <div>
+                    <h4 style={{ 
+                      margin: '0 0 0.25rem 0', 
+                      color: '#374151',
+                      fontSize: '1.1rem'
+                    }}>
+                      {providerDisplay} ({transcript.model}) - {transcript.language.toUpperCase()}
+                    </h4>
+                    <div style={{ 
+                      fontSize: '0.75rem', 
+                      color: '#6b7280'
+                    }}>
+                      {transcript.timestamp}
+                      {transcript.confidence && ` • Confidence: ${(transcript.confidence * 100).toFixed(1)}%`}
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    {/* Phrase Toggle Button */}
+                    <button
+                      onClick={() => togglePhrases(transcript.id)}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        fontSize: '0.75rem',
+                        backgroundColor: isPhrasesActive ? '#8b5cf6' : '#6b7280',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.25rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {isPhrasesActive ? '📝' : '🔤'}
+                    </button>
+                    
+                    {/* Remove Button */}
+                    <button
+                      onClick={() => removeTranscript(transcript.id)}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        fontSize: '0.75rem',
+                        backgroundColor: '#ef4444',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.25rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Phrase Statistics - Only shown in phrase mode */}
+                {isPhrasesActive && (() => {
+                  const stats = getPhraseStats(transcript.transcript)
+                  return (
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280',
+                      marginBottom: '1rem',
+                      padding: '0.5rem',
+                      backgroundColor: '#f3f4f6',
+                      borderRadius: '0.25rem'
+                    }}>
+                      {stats.phraseCount} phrases • {stats.avgWordsPerPhrase} avg words per phrase
+                    </div>
+                  )
+                })()}
+                
+                {/* Transcript Content */}
+                <div style={{ 
+                  whiteSpace: 'pre-wrap', 
+                  lineHeight: isPhrasesActive ? '1.8' : '1.6',
+                  color: '#1f2937',
+                  minHeight: '100px',
+                  marginBottom: '3rem',
+                  fontSize: '0.9rem'
+                }}>
+                  {isPhrasesActive ? splitTranscriptIntoPhrases(transcript.transcript) : transcript.transcript}
+                </div>
+                
+                {/* Stats in bottom right */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '1rem',
+                  right: '1rem',
+                  fontSize: '0.75rem',
+                  color: '#6b7280',
+                  textAlign: 'right'
+                }}>
+                  <div>{transcript.transcript.split(' ').length} words</div>
+                  <div style={{ marginTop: '0.25rem' }}>
+                    {transcript.transcriptionTime < 1 
+                      ? `${(transcript.transcriptionTime * 1000).toFixed(0)}ms` 
+                      : `${transcript.transcriptionTime.toFixed(1)}s`} elapsed
+                  </div>
+                </div>
+
+                {/* Download button in bottom left */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '1rem',
+                  left: '1rem'
+                }}>
+                  <button
+                    onClick={() => downloadSingleTranscript(transcript)}
+                    style={{
+                      padding: '0.25rem 0.75rem',
+                      fontSize: '0.75rem',
+                      backgroundColor: '#10b981',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '0.25rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    📄 Download
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+          
+          {/* Audio Download Button - Only shown if audio was recorded */}
+          {audioSource === 'recorded' && (
+            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
               <button
                 onClick={downloadAudio}
                 style={{
@@ -616,10 +777,10 @@ export default function Home() {
                   transition: 'all 0.2s'
                 }}
               >
-                💾 Download audio
+                💾 Download Original Audio
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
       
