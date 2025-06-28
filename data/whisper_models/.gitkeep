@@ -1,0 +1,2 @@
+# This file ensures the whisper_models directory is tracked in git
+# WhisperX model files will be stored here by the whisperx-api service
