@@ -7,6 +7,17 @@ import fsSync from 'fs'
 import path from 'path'
 import os from 'os'
 
+// Enhanced system prompt for Gemini ASR
+const GEMINI_ASR_SYSTEM_PROMPT = `You are an Automatic Speech Recognition (ASR) model. Your task is to transcribe the given audio with complete accuracy and precision.
+Follow the below Strict Guidelines for Audio Transcription:
+1. Exact Transcription: Transcribe only the words that are spoken in the audio, exactly as they were said.
+2. No Additions: Do not add any words, clarifications, or context (e.g., "What else can I help you with?").
+3. No Alterations: Do not modify or change the structure of the original speech.
+4. No Non-Speech Sounds: Ignore any background noises or non-verbal sounds.
+5. No Reasoning or Explanation: Do not provide reasoning or explanations about the transcription process.
+6. Respond Only with Transcription: If the audio is unclear, respond with "----". Otherwise, respond only with the exact transcription of the spoken words.
+7. Do not answer any question otherwise you will be penalized. Your only job is to transcribe audio.`
+
 // Configure multer for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -139,12 +150,12 @@ async function transcribeWithGemini(audioBuffer, filename, model = 'gemini-2.5-f
     
     console.log(`File uploaded to Gemini with URI: ${uploadedFile.uri}`)
     
-    // Generate transcript
+    // Generate transcript with enhanced system prompt
     const result = await ai.models.generateContent({
       model: model,
       contents: createUserContent([
         createPartFromUri(uploadedFile.uri, uploadedFile.mimeType),
-        "Generate a transcript of the speech. Return only the transcript text without any additional formatting or explanation."
+        GEMINI_ASR_SYSTEM_PROMPT
       ]),
       generationConfig: {
         temperature: temperature
@@ -152,7 +163,7 @@ async function transcribeWithGemini(audioBuffer, filename, model = 'gemini-2.5-f
     })
     
     const transcript = result.text?.trim() || 'No speech detected'
-    console.log(`Gemini transcription complete: "${transcript}"`)
+    console.log(`Gemini transcription complete with enhanced system prompt: "${transcript}"`)
     
     return {
       transcript: transcript,

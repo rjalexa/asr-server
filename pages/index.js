@@ -140,6 +140,7 @@ export default function Home() {
       // Add temperature parameter for Gemini
       if (selectedProvider === 'gemini') {
         queryParams.append('temperature', temperature.toString())
+
       }
 
       const response = await fetch(`/api/transcribe?${queryParams}`, {
