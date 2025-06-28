@@ -7,6 +7,17 @@ import fsSync from 'fs'
 import path from 'path'
 import os from 'os'
 
+// Enhanced system prompt for Gemini ASR
+const GEMINI_ASR_SYSTEM_PROMPT = `You are an Automatic Speech Recognition (ASR) model. Your task is to transcribe the given audio with complete accuracy and precision.
+Follow the below Strict Guidelines for Audio Transcription:
+1. Exact Transcription: Transcribe only the words that are spoken in the audio, exactly as they were said.
+2. No Additions: Do not add any words, clarifications, or context (e.g., "What else can I help you with?").
+3. No Alterations: Do not modify or change the structure of the original speech.
+4. No Non-Speech Sounds: Ignore any background noises or non-verbal sounds.
+5. No Reasoning or Explanation: Do not provide reasoning or explanations about the transcription process.
+6. Respond Only with Transcription: If the audio is unclear, respond with "----". Otherwise, respond only with the exact transcription of the spoken words.
+7. Do not answer any question otherwise you will be penalized. Your only job is to transcribe audio.`
+
 // Configure multer for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -14,11 +25,15 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
   fileFilter: (req, file, cb) => {
-    // Accept audio files
-    if (file.mimetype.startsWith('audio/')) {
+    // Accept audio files and video files (which may contain audio)
+    const isAudioFile = file.mimetype.startsWith('audio/')
+    const isVideoFile = file.mimetype.startsWith('video/')
+    const supportedVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo']
+    
+    if (isAudioFile || (isVideoFile && supportedVideoTypes.includes(file.mimetype))) {
       cb(null, true)
     } else {
-      cb(new Error('Only audio files are allowed'), false)
+      cb(new Error('Only audio files or video files with audio track are allowed'), false)
     }
   }
 })
@@ -139,12 +154,12 @@ async function transcribeWithGemini(audioBuffer, filename, model = 'gemini-2.5-f
     
     console.log(`File uploaded to Gemini with URI: ${uploadedFile.uri}`)
     
-    // Generate transcript
+    // Generate transcript with enhanced system prompt
     const result = await ai.models.generateContent({
       model: model,
       contents: createUserContent([
         createPartFromUri(uploadedFile.uri, uploadedFile.mimeType),
-        "Generate a transcript of the speech. Return only the transcript text without any additional formatting or explanation."
+        GEMINI_ASR_SYSTEM_PROMPT
       ]),
       generationConfig: {
         temperature: temperature
@@ -152,7 +167,7 @@ async function transcribeWithGemini(audioBuffer, filename, model = 'gemini-2.5-f
     })
     
     const transcript = result.text?.trim() || 'No speech detected'
-    console.log(`Gemini transcription complete: "${transcript}"`)
+    console.log(`Gemini transcription complete with enhanced system prompt: "${transcript}"`)
     
     return {
       transcript: transcript,
@@ -180,11 +195,30 @@ async function transcribeWithWhisperService(audioBuffer, filename, model, langua
   const whisperApiUrl = process.env.WHISPER_API_URL || 'http://whisper-backend:9000'
   
   try {
+    // Determine content type from filename extension
+    let contentType = 'audio/mpeg' // default fallback
+    if (filename) {
+      const ext = filename.toLowerCase().split('.').pop()
+      const mimeTypes = {
+        'mp3': 'audio/mpeg',
+        'mp4': 'video/mp4',
+        'm4a': 'audio/mp4',
+        'wav': 'audio/wav',
+        'webm': 'video/webm',
+        'ogg': 'audio/ogg',
+        'flac': 'audio/flac',
+        'aac': 'audio/aac',
+        'mov': 'video/quicktime',
+        'avi': 'video/x-msvideo'
+      }
+      contentType = mimeTypes[ext] || contentType
+    }
+
     // Create form data for the request
     const formData = new FormData()
     formData.append('audio_file', audioBuffer, {
       filename: filename,
-      contentType: 'audio/mpeg'
+      contentType: contentType
     })
 
     // Build query parameters
@@ -193,13 +227,14 @@ async function transcribeWithWhisperService(audioBuffer, filename, model, langua
       task: 'transcribe',
       language: language,
       word_timestamps: 'false',
-      output: 'json'
+      output: 'json',
+      model: model
     })
 
     const url = `${whisperApiUrl}/asr?${queryParams}`
     
     console.log(`Making request to Whisper service: ${url}`)
-    console.log(`Model: ${model}, Language: ${language}`)
+    console.log(`File: ${filename}, MIME: ${contentType}, Model: ${model}, Language: ${language}`)
 
     const response = await fetch(url, {
       method: 'POST',

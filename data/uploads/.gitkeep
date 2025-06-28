@@ -1,0 +1,2 @@
+# This file ensures the uploads directory is tracked in git
+# Upload files will be stored here by the whisperx-api service
