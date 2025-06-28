@@ -69,13 +69,14 @@ function validateModel(model, provider = 'whisper') {
     const supportedGeminiModels = ['gemini-2.5-flash', 'gemini-2.5-pro']
     return supportedGeminiModels.includes(model)
   }
+  // WhisperX uses the same models as Whisper
   const supportedWhisperModels = ['tiny', 'base', 'small', 'medium', 'large']
   return supportedWhisperModels.includes(model)
 }
 
 // Validate provider
 function validateProvider(provider) {
-  const supportedProviders = ['whisper', 'gemini']
+  const supportedProviders = ['whisper', 'whisperx', 'gemini']
   return supportedProviders.includes(provider)
 }
 
@@ -263,6 +264,77 @@ async function transcribeWithWhisperService(audioBuffer, filename, model, langua
   }
 }
 
+// Transcribe using WhisperX Docker service
+async function transcribeWithWhisperXService(audioBuffer, filename, model, language) {
+  const whisperxApiUrl = process.env.WHISPERX_API_URL || 'http://whisperx-api:8000'
+  
+  try {
+    // Determine content type from filename extension
+    let contentType = 'audio/mpeg' // default fallback
+    if (filename) {
+      const ext = filename.toLowerCase().split('.').pop()
+      const mimeTypes = {
+        'mp3': 'audio/mpeg',
+        'mp4': 'video/mp4',
+        'm4a': 'audio/mp4',
+        'wav': 'audio/wav',
+        'webm': 'video/webm',
+        'ogg': 'audio/ogg',
+        'flac': 'audio/flac',
+        'aac': 'audio/aac',
+        'mov': 'video/quicktime',
+        'avi': 'video/x-msvideo'
+      }
+      contentType = mimeTypes[ext] || contentType
+    }
+
+    // Create form data for the request
+    const formData = new FormData()
+    formData.append('file', audioBuffer, {
+      filename: filename,
+      contentType: contentType
+    })
+
+    // Build query parameters for WhisperX API
+    const queryParams = new URLSearchParams({
+      model: model,
+      language: language,
+      response_format: 'json'
+    })
+
+    const url = `${whisperxApiUrl}/v1/audio/transcriptions?${queryParams}`
+    
+    console.log(`Making request to WhisperX service: ${url}`)
+    console.log(`File: ${filename}, MIME: ${contentType}, Model: ${model}, Language: ${language}`)
+
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+      headers: formData.getHeaders(),
+      timeout: 120000 // 2 minute timeout
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`WhisperX service error (${response.status}): ${errorText}`)
+    }
+
+    const result = await response.json()
+    console.log('WhisperX service response:', result)
+
+    return {
+      transcript: result.text || 'No speech detected',
+      language: result.language || language,
+      confidence: result.confidence || null,
+      provider: 'whisperx'
+    }
+
+  } catch (error) {
+    console.error('WhisperX service error:', error)
+    throw new Error(`WhisperX transcription failed: ${error.message}`)
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -286,7 +358,7 @@ export default async function handler(req, res) {
     if (!validateProvider(provider)) {
       return res.status(400).json({ 
         error: 'Unsupported provider',
-        supportedProviders: ['whisper', 'gemini'],
+        supportedProviders: ['whisper', 'whisperx', 'gemini'],
         provided: provider
       })
     }
@@ -305,8 +377,8 @@ export default async function handler(req, res) {
       })
     }
 
-    // For Whisper, validate language (Gemini auto-detects)
-    if (provider === 'whisper' && !validateLanguage(language)) {
+    // For Whisper and WhisperX, validate language (Gemini auto-detects)
+    if ((provider === 'whisper' || provider === 'whisperx') && !validateLanguage(language)) {
       return res.status(400).json({ 
         error: 'Language not supported',
         supportedLanguages: (process.env.SUPPORTED_LANGUAGES || 'en,it,fr,es,de').split(','),
@@ -325,6 +397,13 @@ export default async function handler(req, res) {
         req.file.originalname,
         model,
         temperature
+      )
+    } else if (provider === 'whisperx') {
+      result = await transcribeWithWhisperXService(
+        req.file.buffer, 
+        req.file.originalname,
+        model,
+        language
       )
     } else {
       result = await transcribeWithWhisperService(

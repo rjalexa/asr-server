@@ -16,6 +16,13 @@ import path from 'path'
  *       - ApiKeyAuth: []
  *     parameters:
  *       - in: query
+ *         name: provider
+ *         schema:
+ *           type: string
+ *           enum: [whisper, whisperx]
+ *           default: whisper
+ *         description: ASR provider to use
+ *       - in: query
  *         name: language
  *         schema:
  *           type: string
@@ -28,7 +35,7 @@ import path from 'path'
  *           type: string
  *           enum: [tiny, base, small, medium, large]
  *           default: base
- *         description: Whisper model to use
+ *         description: Whisper/WhisperX model to use
  *     requestBody:
  *       required: true
  *       content:
@@ -196,6 +203,12 @@ function validateLanguage(language) {
   return supportedLanguages.includes(language)
 }
 
+// Validate provider
+function validateProvider(provider) {
+  const supportedProviders = ['whisper', 'whisperx']
+  return supportedProviders.includes(provider)
+}
+
 // Validate model
 function validateModel(model) {
   const supportedModels = ['tiny', 'base', 'small', 'medium', 'large']
@@ -275,6 +288,77 @@ async function transcribeWithWhisperService(audioBuffer, filename, model, langua
   }
 }
 
+// Transcribe using WhisperX Docker service
+async function transcribeWithWhisperXService(audioBuffer, filename, model, language) {
+  const whisperxApiUrl = process.env.WHISPERX_API_URL || 'http://whisperx-api:8000'
+  
+  try {
+    // Determine content type from filename extension
+    let contentType = 'audio/mpeg' // default fallback
+    if (filename) {
+      const ext = filename.toLowerCase().split('.').pop()
+      const mimeTypes = {
+        'mp3': 'audio/mpeg',
+        'mp4': 'video/mp4',
+        'm4a': 'audio/mp4',
+        'wav': 'audio/wav',
+        'webm': 'video/webm',
+        'ogg': 'audio/ogg',
+        'flac': 'audio/flac',
+        'aac': 'audio/aac',
+        'mov': 'video/quicktime',
+        'avi': 'video/x-msvideo'
+      }
+      contentType = mimeTypes[ext] || contentType
+    }
+
+    // Create form data for the request
+    const formData = new FormData()
+    formData.append('file', audioBuffer, {
+      filename: filename,
+      contentType: contentType
+    })
+
+    // Build query parameters for WhisperX API
+    const queryParams = new URLSearchParams({
+      model: model,
+      language: language,
+      response_format: 'json'
+    })
+
+    const url = `${whisperxApiUrl}/v1/audio/transcriptions?${queryParams}`
+    
+    console.log(`[Enhanced API v1] Making request to WhisperX service: ${url}`)
+    console.log(`[Enhanced API v1] File: ${filename}, MIME: ${contentType}, Model: ${model}, Language: ${language}`)
+
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+      headers: formData.getHeaders(),
+      timeout: 300000 // 5 minute timeout for direct API
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`WhisperX service error (${response.status}): ${errorText}`)
+    }
+
+    const result = await response.json()
+    console.log('[Enhanced API v1] WhisperX service response received')
+
+    return {
+      transcript: result.text || 'No speech detected',
+      language: result.language || language,
+      confidence: result.confidence || null,
+      provider: 'whisperx'
+    }
+
+  } catch (error) {
+    console.error('[Enhanced API v1] WhisperX service error:', error)
+    throw new Error(`WhisperX transcription failed: ${error.message}`)
+  }
+}
+
 export default async function handler(req, res) {
   // Only allow POST requests
   if (req.method !== 'POST') {
@@ -330,8 +414,18 @@ export default async function handler(req, res) {
     }
 
     // Get parameters from query or use defaults
+    const provider = req.query.provider || 'whisper'
     const model = req.query.model || process.env.WHISPER_MODEL || 'base'
     const language = req.query.language || process.env.WHISPER_DEFAULT_LANGUAGE || 'en'
+
+    // Validate provider
+    if (!validateProvider(provider)) {
+      return res.status(400).json({ 
+        error: 'Unsupported provider',
+        supportedProviders: ['whisper', 'whisperx'],
+        provided: provider
+      })
+    }
 
     // Validate model
     if (!validateModel(model)) {
@@ -352,15 +446,25 @@ export default async function handler(req, res) {
     }
 
     console.log(`[Enhanced API v1] Processing audio file: ${req.file.originalname}, size: ${req.file.size} bytes`)
-    console.log(`[Enhanced API v1] Using model: ${model}, language: ${language}`)
+    console.log(`[Enhanced API v1] Using provider: ${provider}, model: ${model}, language: ${language}`)
 
-    // Transcribe using Whisper Docker service
-    const result = await transcribeWithWhisperService(
-      req.file.buffer, 
-      req.file.originalname,
-      model,
-      language
-    )
+    // Route to appropriate transcription service
+    let result
+    if (provider === 'whisperx') {
+      result = await transcribeWithWhisperXService(
+        req.file.buffer, 
+        req.file.originalname,
+        model,
+        language
+      )
+    } else {
+      result = await transcribeWithWhisperService(
+        req.file.buffer, 
+        req.file.originalname,
+        model,
+        language
+      )
+    }
 
     console.log(`[Enhanced API v1] Transcription complete for ${req.file.originalname}`)
 
@@ -371,6 +475,7 @@ export default async function handler(req, res) {
         transcript: result.transcript,
         language: result.language,
         model: model,
+        provider: provider,
         confidence: result.confidence,
         metadata: {
           filename: req.file.originalname,

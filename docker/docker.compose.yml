@@ -13,6 +13,7 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - WHISPER_API_URL=http://whisper-backend:9000
+      - WHISPERX_API_URL=http://whisperx-api:8000
       - WHISPER_MODEL=${WHISPER_MODEL:-base}
       - WHISPER_DEFAULT_LANGUAGE=${WHISPER_DEFAULT_LANGUAGE:-en}
       - SUPPORTED_LANGUAGES=${SUPPORTED_LANGUAGES:-en,it,fr,es,de}
