@@ -83,6 +83,7 @@ validate_environment() {
         echo "  ASR_API_KEY_1=your_production_key_1"
         echo "  ASR_API_KEY_2=your_production_key_2"
         echo "  ASR_API_KEY_3=your_production_key_3"
+        echo "  GEMINI_API_KEY=your_google_genai_api_key_here"
         exit 1
     fi
     print_status ".secrets file exists"
