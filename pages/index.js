@@ -10,8 +10,8 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState('whisper')
   const [selectedModel, setSelectedModel] = useState('base')
-  const [selectedLanguage, setSelectedLanguage] = useState('en')
-  const [temperature, setTemperature] = useState(0.4)
+  const [selectedLanguage, setSelectedLanguage] = useState('it')
+  const [temperature, setTemperature] = useState(0)
   const [uploadedFile, setUploadedFile] = useState(null)
   const [audioSource, setAudioSource] = useState(null) // 'recorded' or 'uploaded'
   const [transcriptionTime, setTranscriptionTime] = useState(null) // elapsed time in seconds

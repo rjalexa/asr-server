@@ -244,7 +244,7 @@ export default async function handler(req, res) {
     // Get parameters from query or use defaults
     const provider = req.query.provider || 'whisper'
     const model = req.query.model || (provider === 'gemini' ? 'gemini-2.5-flash' : process.env.WHISPER_MODEL || 'base')
-    const language = req.query.language || process.env.WHISPER_DEFAULT_LANGUAGE || 'en'
+    const language = req.query.language || process.env.WHISPER_DEFAULT_LANGUAGE || 'it'
     const temperature = parseFloat(req.query.temperature) || 0
 
     // Validate provider
