@@ -111,7 +111,8 @@ export default function Home() {
 
     // Check for duplicate configuration
     if (checkForDuplicateTranscript()) {
-      const providerName = selectedProvider === 'gemini' ? 'Gemini AI' : 'Whisper'
+      const providerName = selectedProvider === 'gemini' ? 'Gemini AI' : 
+                          selectedProvider === 'whisperx' ? 'WhisperX' : 'Whisper'
       const confirmed = window.confirm(
         `A transcript with ${providerName} (${selectedModel}) - ${selectedLanguage.toUpperCase()} already exists.\n\nDo you want to create another transcript with the same configuration?`
       )
@@ -122,7 +123,8 @@ export default function Home() {
 
     setIsProcessing(true)
     const startTime = Date.now()
-    const providerName = selectedProvider === 'gemini' ? 'Gemini AI' : 'Docker Whisper'
+    const providerName = selectedProvider === 'gemini' ? 'Gemini AI' : 
+                        selectedProvider === 'whisperx' ? 'WhisperX' : 'Docker Whisper'
     const languageText = selectedProvider === 'gemini' ? 'auto-detect' : selectedLanguage
     setStatus(`Processing with ${providerName} (${selectedModel}, ${languageText})...`)
 
@@ -191,7 +193,8 @@ export default function Home() {
       // Add to transcripts array
       setTranscripts(prev => [newTranscript, ...prev])
 
-      const providerDisplay = result.provider === 'gemini' ? 'Gemini AI' : 'Whisper'
+      const providerDisplay = result.provider === 'gemini' ? 'Gemini AI' : 
+                             result.provider === 'whisperx' ? 'WhisperX' : 'Whisper'
       setStatus(`Transcription complete! (${providerDisplay}: ${result.model}, Lang: ${result.language})`)
 
     } catch (error) {
@@ -265,7 +268,8 @@ export default function Home() {
     if (transcripts.length === 0) return
     
     transcripts.forEach((transcript, index) => {
-      const providerName = transcript.provider === 'gemini' ? 'gemini' : 'whisper'
+      const providerName = transcript.provider === 'gemini' ? 'gemini' : 
+                          transcript.provider === 'whisperx' ? 'whisperx' : 'whisper'
       // Use transcript ID as timestamp since timestamp is a locale string
       const timestamp = transcript.id.toString()
       const filename = `${providerName}_${transcript.model}_${transcript.language}_${timestamp}.txt`
@@ -287,7 +291,8 @@ export default function Home() {
   }
 
   const downloadSingleTranscript = (transcript) => {
-    const providerName = transcript.provider === 'gemini' ? 'gemini' : 'whisper'
+    const providerName = transcript.provider === 'gemini' ? 'gemini' : 
+                        transcript.provider === 'whisperx' ? 'whisperx' : 'whisper'
     // Use transcript ID as timestamp since timestamp is a locale string
     const timestamp = transcript.id.toString()
     const filename = `${providerName}_${transcript.model}_${transcript.language}_${timestamp}.txt`
@@ -360,6 +365,7 @@ export default function Home() {
               }}
             >
               <option value="whisper">Whisper (Local Docker)</option>
+              <option value="whisperx">WhisperX (Enhanced)</option>
               <option value="gemini">Gemini (Google AI)</option>
             </select>
           </div>
@@ -627,7 +633,8 @@ export default function Home() {
           </div>
 
           {transcripts.map((transcript, index) => {
-            const providerDisplay = transcript.provider === 'gemini' ? 'Gemini AI' : 'Whisper'
+            const providerDisplay = transcript.provider === 'gemini' ? 'Gemini AI' : 
+                                   transcript.provider === 'whisperx' ? 'WhisperX' : 'Whisper'
             const isPhrasesActive = showPhrases[transcript.id] || false
             
             return (
